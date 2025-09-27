@@ -14,6 +14,6 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
-    let grid: Grid = Grid::new(200, 50);
+    let grid: Grid = Grid::new(50, 50, 10.0);
     commands.insert_resource(grid);
 }

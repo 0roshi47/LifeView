@@ -1,6 +1,6 @@
 #[derive(Clone, Debug)]
 pub struct Cell {
-    state : f32,
+    pub state : f32,
 }
 
 impl Cell {

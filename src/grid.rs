@@ -1,4 +1,6 @@
-use bevy::{picking::window, prelude::*};
+use std::cell;
+
+use bevy::prelude::*;
 use crate::cell::Cell;
 
 use rand::Rng;
@@ -7,30 +9,37 @@ use rand::Rng;
 pub struct Grid {
     pub cells: Vec<Cell>,
     width: usize,
-    height: usize
+    height: usize,
+    cell_size: f32,
 }
 
 impl Grid {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize, cell_size: f32) -> Self {
         let mut grid = Self {
             cells: vec![Cell::default(); width*height],
             width: width,
-            height: height
+            height: height,
+            cell_size: cell_size,
         };
         grid.init();
         grid
     }
 
     pub fn init(&mut self) {
-        const DENSITY: f32 = 0.1;
         let mut rng = rand::rng();
+        let center: IVec2 = IVec2::new(self.width as i32/2, self.height as i32/2);
         for i in 0..self.cells.len() {
-            if rng.random::<f32>() <= DENSITY {
-                self.cells[i] = Cell::new(1.0);
-            }
+            let distance_from_center: f32 = ((idx_to_vector(i as i32, self.width as i32) - center).length_squared() as f32).sqrt();
+            let state: f32 = rng.random::<f32>() * distance_from_center;
+            println!("{}", state);
+            self.cells[i] = Cell::new(state);
         }
     }
 
+}
+
+pub fn idx_to_vector(idx: i32, width: i32) -> IVec2 {
+    IVec2::new(idx%width as i32, idx/width as i32)
 }
 
 pub fn spawn (
@@ -40,14 +49,16 @@ pub fn spawn (
         grid: Res<Grid>,
     ) {
         let grid = grid.into_inner();
-        for (i, _cell) in grid.cells.iter().enumerate() {
+        for (i, cell) in grid.cells.iter().enumerate() {
+            let x: f32 = (i%grid.width) as f32*grid.cell_size - (grid.width as f32*grid.cell_size)/2.0;
+            let y: f32 = (i/grid.width) as f32*grid.cell_size - (grid.height as f32*grid.cell_size)/2.0;
             commands.spawn((
-                Mesh2d(meshes.add(Rectangle::new(10.0, 10.0))),
+                Mesh2d(meshes.add(Rectangle::new(grid.cell_size, grid.cell_size))),
                 MeshMaterial2d(materials.add(ColorMaterial {
-                    color: Color::srgb_u8(255, 0, 0),
+                    color: Color::linear_rgb(cell.state, 0.0, 1.0-cell.state),
                     ..default()
                 })),
-                Transform::from_xyz((i % grid.width) as f32 - (grid.width as f32 / 2.0), (i/grid.height) as f32, 0.0),
+                Transform::from_xyz(x, y, 0.0),
             ));
         }
 }

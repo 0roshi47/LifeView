@@ -1,0 +1,4 @@
+enum GrowthMode {
+    Gaussian,
+    Sigmoid
+}

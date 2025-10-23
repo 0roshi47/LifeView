@@ -1,12 +1,13 @@
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::*,
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, math::ops::{abs, sin}, prelude::*
 };
 
 use grid::Grid;
+use cell::Cell;
 
 mod cell;
 mod grid;
+mod growth;
 
 fn main() {
     App::new()
@@ -26,6 +27,7 @@ fn main() {
 
         .add_systems(Startup, setup)
         .add_systems(Startup, grid::spawn.after(setup))
+        .add_systems(Update, animate_materials)
         .run();
 }
 
@@ -35,13 +37,15 @@ fn setup(mut commands: Commands) {
     commands.insert_resource(grid);
 }
 
-// fn animate_materials(
-//     material_handles: Query<&MeshMaterial2d<ColorMaterial>>,
-//     time: Res<Time>,
-//     mut materials: ResMut<Assets<ColorMaterial>>,
-// ) {
-//     for (_id, material) in materials.iter_mut() {
-//         material.color = Color::linear_rgb(1.0, 0.0, 0.0);
-//     }
-// }
+fn animate_materials (
+    // material_handles: Query<&MeshMaterial2d<ColorMaterial>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    grid: Res<Grid>
+) {
+    for (i, (_id, material)) in materials.iter_mut().enumerate() {
+        if i < grid.cells.len()-1 {
+            material.color = Color::linear_rgb(grid.cells.get(i).unwrap().state, 0.0, 1.0 - grid.cells.get(i).unwrap().state);
+        }
+    }
+}
 

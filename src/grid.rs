@@ -36,20 +36,47 @@ impl Grid {
         }
     }
 
-    // pub fn life_around(&mut self, pos: IVec2) -> f32 {
-    //     // self.cells[vector_to_dx(pos, self.width)]
-    // }
+    pub fn life_around(&self, pos: IVec2) -> f32 {
+        let mut result: f32 = 0.0;
+        for x in -1..2 {
+            for y in -1..2 {
+                let neighbour: IVec2 = IVec2::new(x, y);
+                if neighbour == IVec2::ZERO {
+                    continue;
+                }
+                let neighbour_cell: IVec2 = pos+neighbour;
+                if !self.in_bounds(neighbour_cell) {
+                    continue;
+                }
+                result += self.cells.get(self.vector_to_idx(neighbour_cell) as usize).unwrap().state;
+            }
+        }
+        result
+    }
 
     pub fn idx_to_vector(&self, idx: i32) -> IVec2 {
         IVec2::new(idx%self.width as i32, idx/self.width as i32)
     }
     
-    pub fn vector_to_dx(&self, pos: IVec2) -> i32 {
-        pos.x%self.width as i32 + pos.y/self.width as i32
+    pub fn vector_to_idx(&self, pos: IVec2) -> i32 {
+        pos.x%self.width as i32 + pos.y*self.height as i32
+    }
+
+    pub fn in_bounds(&self, pos: IVec2) -> bool {
+        pos.x >= 0 && pos.x < self.width as i32 && pos.y > 0 && pos.y < self.height as i32
+    }
+
+    pub fn generation (&self) -> Vec<Cell> {
+        let mut result : Vec<Cell> = vec![Cell::default(); self.width*self.height];
+        for (idx, _cell) in self.cells.iter().enumerate() {
+            // let life_around: f32 = self.life_around(self.idx_to_vector(idx as i32));
+            let life_around_value: f32 = self.life_around(self.idx_to_vector(idx as i32));
+            result[idx] = Cell::new(growth(life_around_value));
+        }
+        result
     }
 
 }
-
 
 pub fn spawn (
     mut commands: Commands,
@@ -73,11 +100,35 @@ pub fn spawn (
     }
 }
 
-pub fn generation (
+pub fn update_generation (
     mut grid: ResMut<Grid>
 ) {
-    for (idx, cell) in grid.cells.iter_mut().enumerate() {
-        // let life_around: f32 = grid.life_around(idx_to_vector(idx, grid.width));
+    let new_generation: Vec<Cell> = grid.generation();
+    grid.cells = new_generation;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn grid_idx_to_vector() {
+        let grid = Grid::new(100, 100, 5.0);
+
+        assert_eq!(grid.idx_to_vector(0), IVec2::new(0, 0));
+        assert_eq!(grid.idx_to_vector(100), IVec2::new(0, 1));
+        assert_eq!(grid.idx_to_vector(101), IVec2::new(1, 1));
+        assert_eq!(grid.idx_to_vector(1010), IVec2::new(10, 10));
+    }
+
+    #[test]
+    fn grid_vector_to_idx() {
+        let grid = Grid::new(100, 100, 5.0);
+
+        assert_eq!(grid.vector_to_idx(IVec2::new(0, 0)), 0);
+        assert_eq!(grid.vector_to_idx(IVec2::new(0, 1)), 100);
+        assert_eq!(grid.vector_to_idx(IVec2::new(1, 1)), 101);
+        assert_eq!(grid.vector_to_idx(IVec2::new(10, 10)), 1010);
     }
 
 }

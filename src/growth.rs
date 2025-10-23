@@ -1,8 +1,8 @@
-enum GrowthMode {
-    Gaussian,
-    Sigmoid
-}
+// enum GrowthMode {
+//     Gaussian,
+//     Sigmoid
+// }
 
-pub fn growth(U: f32) -> f32 {
-    U
+pub fn growth(u: f32) -> f32 {
+    u
 }

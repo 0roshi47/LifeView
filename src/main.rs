@@ -5,6 +5,8 @@ use bevy::{
 use grid::Grid;
 use cell::Cell;
 
+use crate::grid::update_generation;
+
 mod cell;
 mod grid;
 mod growth;
@@ -24,9 +26,9 @@ fn main() {
             // Adds cpu and memory usage diagnostics for systems and the entire game process.
             bevy::diagnostic::SystemInformationDiagnosticsPlugin,
         ))
-
         .add_systems(Startup, setup)
         .add_systems(Startup, grid::spawn.after(setup))
+        .add_systems(Update, update_generation)
         .add_systems(Update, animate_materials)
         .run();
 }

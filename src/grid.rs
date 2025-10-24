@@ -69,7 +69,6 @@ impl Grid {
     pub fn generation (&self) -> Vec<Cell> {
         let mut result : Vec<Cell> = vec![Cell::default(); self.width*self.height];
         for (idx, _cell) in self.cells.iter().enumerate() {
-            // let life_around: f32 = self.life_around(self.idx_to_vector(idx as i32));
             let life_around_value: f32 = self.life_around(self.idx_to_vector(idx as i32));
             result[idx] = Cell::new(growth(life_around_value));
         }

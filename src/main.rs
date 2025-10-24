@@ -1,37 +1,39 @@
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, math::ops::{abs, sin}, prelude::*
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, prelude::*
 };
-
+use bevy_egui::{EguiPlugin};
 use grid::Grid;
-use cell::Cell;
-
 use crate::grid::update_generation;
+use crate::interface::UiPlugin;
 
+mod interface;
 mod cell;
 mod grid;
-mod growth;
+mod rule;
 
 fn main() {
     App::new()
-            .add_plugins((
-            // The diagnostics plugins need to be added after DefaultPlugins as they use e.g. the time plugin for timestamps.
-            DefaultPlugins,
-            // Adds a system that prints diagnostics to the console.
-            // The other diagnostics plugins can still be used without this if you want to use them in an ingame overlay for example.
-            LogDiagnosticsPlugin::default(),
-            // Adds frame time, FPS and frame count diagnostics.
-            FrameTimeDiagnosticsPlugin::default(),
-            // Adds an entity count diagnostic.
-            bevy::diagnostic::EntityCountDiagnosticsPlugin,
-            // Adds cpu and memory usage diagnostics for systems and the entire game process.
-            bevy::diagnostic::SystemInformationDiagnosticsPlugin,
-        ))
+        .add_plugins(DefaultPlugins)
+        .add_plugins(LogDiagnosticsPlugin::default())
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        .add_plugins(bevy::diagnostic::SystemInformationDiagnosticsPlugin,)
+        .add_plugins(EguiPlugin::default())
+        .add_plugins(UiPlugin)
         .add_systems(Startup, setup)
         .add_systems(Startup, grid::spawn.after(setup))
+        // .add_systems(EguiPrimaryContextPass, interface::init_ui)
+        // .add_systems(EguiPrimaryContextPass, init_ui)
         .add_systems(Update, update_generation)
         .add_systems(Update, animate_materials)
         .run();
 }
+
+// pub fn init_ui(mut contexts: EguiContexts) -> Result {
+//     egui::Window::new("Hello").show(contexts.ctx_mut()?, |ui| {
+//         ui.label("world");
+//     });
+//     Ok(())
+// }
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
@@ -40,7 +42,6 @@ fn setup(mut commands: Commands) {
 }
 
 fn animate_materials (
-    // material_handles: Query<&MeshMaterial2d<ColorMaterial>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     grid: Res<Grid>
 ) {

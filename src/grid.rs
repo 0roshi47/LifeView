@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use crate::cell::Cell;
-use crate::growth::growth;
+use crate::rule::Rule;
 
 use rand::Rng;
 
@@ -10,6 +10,7 @@ pub struct Grid {
     pub width: usize,
     pub height: usize,
     pub cell_size: f32,
+    pub rule: Rule
 }
 
 impl Grid {
@@ -19,6 +20,7 @@ impl Grid {
             width: width,
             height: height,
             cell_size: cell_size,
+            rule: Rule::default()
         };
         grid.init();
         grid
@@ -31,7 +33,6 @@ impl Grid {
         for i in 0..self.cells.len() {
             let distance_from_center: f32 = ((self.idx_to_vector(i as i32) - center).length_squared() as f32).sqrt()*DENSITY;
             let state: f32 = 1.0 - (rng.random::<f32>() * distance_from_center).clamp(0.0, 1.0);
-            // println!("{}", state);
             self.cells[i] = Cell::new(state);
         }
     }
@@ -70,11 +71,10 @@ impl Grid {
         let mut result : Vec<Cell> = vec![Cell::default(); self.width*self.height];
         for (idx, _cell) in self.cells.iter().enumerate() {
             let life_around_value: f32 = self.life_around(self.idx_to_vector(idx as i32));
-            result[idx] = Cell::new(growth(life_around_value));
+            result[idx] = Cell::new(self.rule.growth(life_around_value));
         }
         result
     }
-
 }
 
 pub fn spawn (
@@ -129,5 +129,4 @@ mod tests {
         assert_eq!(grid.vector_to_idx(IVec2::new(1, 1)), 101);
         assert_eq!(grid.vector_to_idx(IVec2::new(10, 10)), 1010);
     }
-
 }

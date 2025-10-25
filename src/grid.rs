@@ -1,8 +1,13 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+};
+
+
 use crate::cell::Cell;
 use crate::rule::Rule;
 
 use rand::Rng;
+
 
 #[derive(Resource, Debug)]
 pub struct Grid {
@@ -67,35 +72,15 @@ impl Grid {
         pos.x >= 0 && pos.x < self.width as i32 && pos.y > 0 && pos.y < self.height as i32
     }
 
-    pub fn generation (&self) -> Vec<Cell> {
+    pub fn generation (
+        &self,
+    ) -> Vec<Cell> {
         let mut result : Vec<Cell> = vec![Cell::default(); self.width*self.height];
         for (idx, _cell) in self.cells.iter().enumerate() {
             let life_around_value: f32 = self.life_around(self.idx_to_vector(idx as i32));
             result[idx] = Cell::new(self.rule.growth(life_around_value));
         }
         result
-    }
-}
-
-pub fn spawn (
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    grid: Res<Grid>,
-) {
-    let grid = grid.into_inner();
-    let handle = meshes.add(Rectangle::new(grid.cell_size, grid.cell_size));
-    for (i, cell) in grid.cells.iter().enumerate() {
-        let x: f32 = (i%grid.width) as f32*grid.cell_size - (grid.width as f32*grid.cell_size)/2.0;
-        let y: f32 = (i/grid.width) as f32*grid.cell_size - (grid.height as f32*grid.cell_size)/2.0;
-        commands.spawn((
-            Mesh2d(handle.clone()),
-            MeshMaterial2d(materials.add(ColorMaterial {
-                color: Color::linear_rgb(cell.state, 0.0, 1.0 - cell.state),
-                ..default()
-            })),
-            Transform::from_xyz(x, y, 0.0),
-        ));
     }
 }
 

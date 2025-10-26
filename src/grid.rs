@@ -2,7 +2,6 @@ use bevy::{
     prelude::*,
 };
 
-
 use crate::cell::Cell;
 use crate::rule::Rule;
 

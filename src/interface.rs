@@ -14,8 +14,18 @@ impl Plugin for UiPlugin {
 }
 
 pub fn ui(mut contexts: EguiContexts) -> Result {
-    egui::Window::new("Hello").show(contexts.ctx_mut()?, |ui| {
-        ui.label("world");
+    egui::Window::new("Lenia").show(contexts.ctx_mut()?, |ui| {
+        ui.heading("Simulation");
+        ui.horizontal(|ui| {
+            if ui.button("Pause").clicked() {
+
+            }
+            if ui.button("Reset").clicked() {
+
+            }
+        });
+        ui.add_space(20.0);
+        ui.heading("Rules");
     });
     Ok(())
 }

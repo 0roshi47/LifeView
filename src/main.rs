@@ -1,5 +1,5 @@
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, mesh::MeshTag, prelude::*, reflect::TypePath, render::render_resource::AsBindGroup, shader::ShaderRef, sprite_render::{Material2d, Material2dPlugin}
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, math::VectorSpace, mesh::MeshTag, prelude::*, reflect::TypePath, render::render_resource::AsBindGroup, shader::ShaderRef, sprite_render::{Material2d, Material2dPlugin}
 };
 
 use bevy_egui::EguiPlugin;
@@ -11,6 +11,7 @@ mod interface;
 mod cell;
 mod grid;
 mod rule;
+mod grid_coloration;
 
 const SHADER_ASSET_PATH: &str = "shaders/cell.wgsl";
 
@@ -48,7 +49,7 @@ fn setup (
         commands.spawn((
             Mesh2d(handle_mesh.clone()),
             MeshMaterial2d(materials.add(CustomMaterial {
-                cell_state: 1.0
+                color: grid.grid_coloration.life_color
             })),
             MeshTag(i as u32),
             Transform::from_xyz(x, y, 0.0)
@@ -64,18 +65,17 @@ fn animate_materials (
 ) {
     for (mesh_tag, mat_handle) in query.iter() {
         let i = mesh_tag.0 as usize;
+        let new_color: LinearRgba = grid.grid_coloration.lerp(grid.cells[i].state);
         if let Some(mat) = materials.get_mut(&mat_handle.0) {
-            mat.cell_state = grid.cells[i].state;
+            mat.color = new_color
         }
     }
 }
 
-
-
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 struct CustomMaterial {
     #[uniform(0)]
-    cell_state: f32
+    color: LinearRgba
 }
 
 impl Material2d for CustomMaterial {

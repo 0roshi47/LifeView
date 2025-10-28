@@ -3,6 +3,7 @@ use bevy::{
 };
 
 use crate::cell::Cell;
+use crate::grid_coloration::GridColoration;
 use crate::rule::Rule;
 
 use rand::Rng;
@@ -14,7 +15,8 @@ pub struct Grid {
     pub width: usize,
     pub height: usize,
     pub cell_size: f32,
-    pub rule: Rule
+    pub rule: Rule,
+    pub grid_coloration: GridColoration
 }
 
 impl Grid {
@@ -24,7 +26,8 @@ impl Grid {
             width: width,
             height: height,
             cell_size: cell_size,
-            rule: Rule::default()
+            rule: Rule::default(),
+            grid_coloration: GridColoration::default()
         };
         grid.init();
         grid

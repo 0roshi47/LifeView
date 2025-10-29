@@ -16,7 +16,8 @@ pub struct Grid {
     pub height: usize,
     pub cell_size: f32,
     pub rule: Rule,
-    pub grid_coloration: GridColoration
+    pub grid_coloration: GridColoration,
+    pub paused: bool
 }
 
 impl Grid {
@@ -27,7 +28,8 @@ impl Grid {
             height: height,
             cell_size: cell_size,
             rule: Rule::default(),
-            grid_coloration: GridColoration::default()
+            grid_coloration: GridColoration::default(),
+            paused: true
         };
         grid.init();
         grid
@@ -42,6 +44,7 @@ impl Grid {
             let state: f32 = 1.0 - (rng.random::<f32>() * distance_from_center).clamp(0.0, 1.0);
             self.cells[i] = Cell::new(state);
         }
+        self.paused = true;
     }
 
     pub fn life_around(&self, pos: IVec2) -> f32 {
@@ -71,7 +74,7 @@ impl Grid {
     }
 
     pub fn in_bounds(&self, pos: IVec2) -> bool {
-        pos.x >= 0 && pos.x < self.width as i32 && pos.y > 0 && pos.y < self.height as i32
+        pos.x >= 0 && pos.x < self.width as i32 && pos.y >= 0 && pos.y < self.height as i32
     }
 
     pub fn generation (
@@ -80,15 +83,24 @@ impl Grid {
         let mut result : Vec<Cell> = vec![Cell::default(); self.width*self.height];
         for (idx, _cell) in self.cells.iter().enumerate() {
             let life_around_value: f32 = self.life_around(self.idx_to_vector(idx as i32));
-            result[idx] = Cell::new(self.rule.growth(life_around_value));
+            let new_value: f32 = self.cells[idx].state + self.rule.growth(life_around_value)*self.rule.delta;
+            result[idx] = Cell::new(new_value.clamp(0.0, 1.0));
         }
         result
     }
+
+    pub fn pause(&mut self) {
+        self.paused = !self.paused;
+    }
+
 }
 
 pub fn update_generation (
     mut grid: ResMut<Grid>
 ) {
+    if grid.paused {
+        return;
+    }
     let new_generation: Vec<Cell> = grid.generation();
     grid.cells = new_generation;
 }

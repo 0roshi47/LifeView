@@ -1,31 +1,58 @@
+use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::app::{App, Plugin};
+use bevy_egui::egui::color_picker;
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 pub struct UiPlugin;
 
+use crate::grid::Grid;
+
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        // Don't add the plugin for users, let them chose the default mode themselves
-        // and just make sure they initialize EguiPlugin before yours.
         assert!(app.is_plugin_added::<EguiPlugin>());
-
         app.add_systems(EguiPrimaryContextPass, ui);
     }
 }
 
-pub fn ui(mut contexts: EguiContexts) -> Result {
-    egui::Window::new("Lenia").show(contexts.ctx_mut()?, |ui| {
+pub fn ui(
+    mut contexts: EguiContexts,
+    mut grid: ResMut<Grid>,
+    diagnostics: Res<DiagnosticsStore>,
+) -> Result {
+    egui::Window::new("Lenia")
+    .show(contexts.ctx_mut()?, |ui| {
+        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) 
+        && let Some(value) = fps.smoothed() {
+            ui.label(format!("FPS: {value:.2}"));
+        }
+
         ui.heading("Simulation");
         ui.horizontal(|ui| {
             if ui.button("Pause").clicked() {
-
+                grid.pause();
             }
             if ui.button("Reset").clicked() {
-
+                grid.init();
             }
         });
+
+        ui.add_space(20.0);
+        ui.heading("Colors");
+        ui.horizontal(|ui| {
+            // color_picker(ui, &mut grid.grid_coloration.life_color);
+            ui.label("Life color");
+        });
+        ui.horizontal(|ui| {
+            // color_picker(ui, &mut grid.color_2);
+            ui.label("Death color");
+        });
+
         ui.add_space(20.0);
         ui.heading("Rules");
+        ui.add(egui::Slider::new(&mut grid.rule.micro, 0.0..=1.0).text("Micro"));
+        ui.add(egui::Slider::new(&mut grid.rule.sigma, 0.0..=1.0).text("Sigma"));
+        ui.add(egui::Slider::new(&mut grid.rule.radius, 1..=10).text("Radius"));
+        ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=1.0).text("Delta"));
     });
     Ok(())
 }

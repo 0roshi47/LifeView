@@ -5,7 +5,8 @@ pub struct Rule {
     pub state_type: StateType,
     pub micro: f32,
     pub sigma: f32,
-    pub radius: usize
+    pub radius: usize,
+    pub delta: f32
 }
 
 impl Rule {
@@ -14,12 +15,14 @@ impl Rule {
             state_type: state_type,
             micro: micro,
             sigma: sigma,
-            radius: radius
+            radius: radius,
+            delta: 1.0
         }
     }
 
     pub fn growth(&self, u: f32) -> f32 {
-        2.0*exp(-powf(u-self.micro, 2.0)/2.0*powf(self.sigma, 2.0)) - 1.0
+        let diff: f32 = u-self.micro;
+        2.0*exp(-((diff*diff)/(2.0*self.sigma*self.sigma))) - 1.0
     }
 }
 
@@ -27,9 +30,10 @@ impl Default for Rule {
     fn default() -> Self {
         Self {
             state_type: StateType::CONTINUOUS,
-            micro: 0.4,
-            sigma: 0.5,
-            radius: 1
+            micro: 0.35,
+            sigma: 0.15,
+            radius: 1, 
+            delta: 1.0
         }
     }
 }

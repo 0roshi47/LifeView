@@ -1,5 +1,5 @@
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, math::VectorSpace, mesh::MeshTag, prelude::*, reflect::TypePath, render::render_resource::AsBindGroup, shader::ShaderRef, sprite_render::{Material2d, Material2dPlugin}
+    diagnostic::{FrameTimeDiagnosticsPlugin}, mesh::MeshTag, prelude::*, reflect::TypePath, render::render_resource::AsBindGroup, shader::ShaderRef, sprite_render::{Material2d, Material2dPlugin}
 };
 
 use bevy_egui::EguiPlugin;
@@ -15,14 +15,12 @@ mod grid_coloration;
 
 const SHADER_ASSET_PATH: &str = "shaders/cell.wgsl";
 
-const BASE_CELL_WIDTH: usize = 100;
+const BASE_CELL_WIDTH: usize = 60;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        .add_plugins(bevy::diagnostic::SystemInformationDiagnosticsPlugin,)
         .add_plugins(EguiPlugin::default())
         .add_plugins(UiPlugin)
         .add_plugins(Material2dPlugin::<CustomMaterial>::default())
@@ -49,7 +47,7 @@ fn setup (
         commands.spawn((
             Mesh2d(handle_mesh.clone()),
             MeshMaterial2d(materials.add(CustomMaterial {
-                color: grid.grid_coloration.life_color
+                color: grid.grid_coloration.color_a
             })),
             MeshTag(i as u32),
             Transform::from_xyz(x, y, 0.0)
@@ -66,6 +64,7 @@ fn animate_materials (
     for (mesh_tag, mat_handle) in query.iter() {
         let i = mesh_tag.0 as usize;
         let new_color: LinearRgba = grid.grid_coloration.lerp(grid.cells[i].state);
+        println!("{}", grid.cells[i].state);
         if let Some(mat) = materials.get_mut(&mat_handle.0) {
             mat.color = new_color
         }

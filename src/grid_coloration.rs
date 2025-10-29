@@ -4,28 +4,26 @@ use bevy::{
 
 #[derive(Clone, Debug)]
 pub struct GridColoration {
-    pub life_color : LinearRgba,
-    pub death_color : LinearRgba
+    pub color_a : LinearRgba,
+    pub color_b : LinearRgba,
+    pub color_c : LinearRgba,
 }
 
 impl Default for GridColoration {
     fn default() -> Self {
         Self { 
-            life_color: LinearRgba::new(0.1, 0.0, 0.0, 1.0),
-            death_color: LinearRgba::new(0.0, 0.0, 0.0, 1.0),
+            color_a : LinearRgba::new(1.0, 1.0, 0.0, 1.0),
+            color_b : LinearRgba::new(0.0, 0.0, 1.0, 1.0),
+            color_c : LinearRgba::new(0.0, 0.0, 0.0, 1.0),
         }
     }
 }
 
 impl GridColoration {
-    pub fn new(life_color: LinearRgba, death_color: LinearRgba) -> Self {
-        Self {
-            life_color: life_color,
-            death_color: death_color
-        }
-    }
-
     pub fn lerp(&self, x: f32) -> LinearRgba {
-        self.life_color.lerp(self.death_color, x)
+        let interpolation_a: LinearRgba = self.color_a.lerp(self.color_b, x);
+        let interpolation_b: LinearRgba = self.color_b.lerp(self.color_c, x);
+        interpolation_b.lerp(interpolation_a, x)
+        // self.color_c.lerp(self.color_a, x)
     }
 }

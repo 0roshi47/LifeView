@@ -53,7 +53,7 @@ fn setup (
                 color: grid.grid_coloration.color_a
             })),
             MeshTag(i as u32),
-            Transform::from_xyz(x, y, 0.0)
+            Transform::from_xyz(x+grid.cell_size/2.0, y+grid.cell_size/2.0, 0.0)
         ));
     }
     commands.insert_resource(grid);
@@ -90,17 +90,17 @@ fn mouse_click(
     windows: Query<&mut Window>,
     grid: ResMut<Grid>
 ) {
-    let window = windows.single().unwrap();
-    if mouse.pressed(MouseButton::Left) {
-        if let Some(position) = window.cursor_position() {
-            draw(position, grid, 1.0, window);
-        }
-    }
-    else if mouse.pressed(MouseButton::Right) {
-        if let Some(position) = window.cursor_position() {
-            draw(position, grid, -1.0, window);
-        }
-    }
+    // let window = windows.single().unwrap();
+    // if mouse.pressed(MouseButton::Left) {
+    //     if let Some(position) = window.cursor_position() {
+    //         // draw(position, grid, 1.0, window);
+    //     }
+    // }
+    // else if mouse.pressed(MouseButton::Right) {
+    //     if let Some(position) = window.cursor_position() {
+    //         // draw(position, grid, -1.0, window);
+    //     }
+    // }
 }
 
 fn draw(

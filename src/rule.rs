@@ -31,9 +31,9 @@ impl Default for Rule {
         Self {
             state_type: StateType::CONTINUOUS,
             micro: 0.35,
-            sigma: 0.15,
+            sigma: 0.649,
             radius: 1, 
-            delta: 1.0
+            delta: 0.1
         }
     }
 }

@@ -22,9 +22,11 @@ impl Default for GridColoration {
 impl GridColoration {
     pub fn lerp(&self, x: f32) -> LinearRgba {
         if x <= 0.5 {
-            self.color_c.lerp(self.color_b, x)
+            let t = x * 2.0;
+            self.color_c.lerp(self.color_b, t)
         } else {
-            self.color_b.lerp(self.color_a, x)
+            let t = (x - 0.5) * 2.0;
+            self.color_b.lerp(self.color_a, t)
         }
     }
 }

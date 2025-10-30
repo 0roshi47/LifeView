@@ -6,6 +6,7 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 pub struct UiPlugin;
 
 use crate::grid::Grid;
+use crate::grid::GenerationType;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
@@ -34,7 +35,24 @@ pub fn ui(
             if ui.button("Reset").clicked() {
                 grid.init();
             }
+            if ui.button("Clear").clicked() {
+                grid.clear();
+            }
         });
+        egui::ComboBox::from_label("Init generation")
+            .selected_text(format!("{:?}", grid.generation_type))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut grid.generation_type,
+                    GenerationType::NOISE,
+                    "Noise",
+                );
+                ui.selectable_value(
+                    &mut grid.generation_type,
+                    GenerationType::RANDOM,
+                    "Random",
+                );
+            });
 
         ui.add_space(20.0);
         ui.heading("Colors");

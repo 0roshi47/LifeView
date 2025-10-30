@@ -1,24 +1,24 @@
-use bevy::math::ops::{exp, powf};
+use bevy::math::ops::{exp};
 
 #[derive(Clone, Debug)]
 pub struct Rule {
     pub state_type: StateType,
     pub micro: f32,
     pub sigma: f32,
-    pub radius: usize,
+    pub radius: i32,
     pub delta: f32
 }
 
 impl Rule {
-    pub fn new(state_type: StateType, micro: f32, sigma: f32, radius: usize) -> Self {
-        Self {
-            state_type: state_type,
-            micro: micro,
-            sigma: sigma,
-            radius: radius,
-            delta: 1.0
-        }
-    }
+    // pub fn new(state_type: StateType, micro: f32, sigma: f32, radius: usize) -> Self {
+    //     Self {
+    //         state_type: state_type,
+    //         micro: micro,
+    //         sigma: sigma,
+    //         radius: radius,
+    //         delta: 1.0
+    //     }
+    // }
 
     pub fn growth(&self, u: f32) -> f32 {
         let diff: f32 = u-self.micro;
@@ -40,5 +40,6 @@ impl Default for Rule {
 
 #[derive(Clone, Debug)]
 enum StateType {
-    CONTINUOUS, DISCRETE
+    CONTINUOUS,
+    // DISCRETE
 }

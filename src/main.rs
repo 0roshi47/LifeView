@@ -15,7 +15,9 @@ mod grid_coloration;
 
 const SHADER_ASSET_PATH: &str = "shaders/cell.wgsl";
 
-const BASE_CELL_WIDTH: usize = 60;
+const BASE_CELL_WIDTH: usize = 75;
+
+const DRAW_STRENGHT: f32 = 0.05; 
 
 fn main() {
     App::new()
@@ -27,6 +29,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(FixedUpdate, update_generation)
         .add_systems(FixedUpdate, animate_materials)
+        .add_systems(FixedUpdate, mouse_click)
         .run();
 }
 
@@ -64,7 +67,6 @@ fn animate_materials (
     for (mesh_tag, mat_handle) in query.iter() {
         let i = mesh_tag.0 as usize;
         let new_color: LinearRgba = grid.grid_coloration.lerp(grid.cells[i].state);
-        println!("{}", grid.cells[i].state);
         if let Some(mat) = materials.get_mut(&mat_handle.0) {
             mat.color = new_color
         }
@@ -81,4 +83,37 @@ impl Material2d for CustomMaterial {
     fn fragment_shader() -> ShaderRef {
         SHADER_ASSET_PATH.into()
     }
+}
+
+fn mouse_click(
+    mouse: Res<ButtonInput<MouseButton>>,
+    windows: Query<&mut Window>,
+    grid: ResMut<Grid>
+) {
+    let window = windows.single().unwrap();
+    if mouse.pressed(MouseButton::Left) {
+        if let Some(position) = window.cursor_position() {
+            draw(position, grid, 1.0, window);
+        }
+    }
+    else if mouse.pressed(MouseButton::Right) {
+        if let Some(position) = window.cursor_position() {
+            draw(position, grid, -1.0, window);
+        }
+    }
+}
+
+fn draw(
+    position: Vec2,
+    mut grid: ResMut<Grid>,
+    pressure: f32,
+    window: &Window
+) {
+    let world_x = position.x + window.width();
+    let world_y = window.height() - position.y;
+    let gx = (world_x / grid.cell_size).floor() as i32;
+    let gy = (world_y / grid.cell_size).floor() as i32;
+    let true_pos = grid.wrap_pos(IVec2::new(gx, gy));
+    let idx: usize = grid.vector_to_idx(true_pos) as usize;
+    grid.cells[idx].state += DRAW_STRENGHT*pressure;
 }

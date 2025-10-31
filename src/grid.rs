@@ -1,3 +1,4 @@
+use bevy::math::ops::sqrt;
 use bevy::{
     prelude::*,
 };
@@ -62,14 +63,19 @@ impl Grid {
 
     pub fn life_around(&self, pos: IVec2) -> f32 {
         let mut result: f32 = 0.0;
+        //convolution operation, we iterate over a square around the cell, the value added is based on the optimal distance (the radius)
         for x in -self.rule.radius..self.rule.radius+1 {
             for y in -self.rule.radius..self.rule.radius+1 {
                 let neighbour: IVec2 = IVec2::new(x, y);
-                if neighbour == IVec2::ZERO {
-                    continue;
-                }
                 let neighbour_cell: IVec2 = self.wrap_pos(pos+neighbour);
-                result += self.cells.get(self.vector_to_idx(neighbour_cell) as usize).unwrap().state;
+                let distance: f32 = sqrt(((pos+neighbour) - pos).length_squared() as f32);
+                let ratio: f32;
+                if distance > self.rule.radius as f32 {
+                    ratio = self.rule.radius as f32/distance;
+                } else {
+                    ratio = distance/self.rule.radius as f32;
+                }
+                result += self.cells.get(self.vector_to_idx(neighbour_cell) as usize).unwrap().state*ratio;
             }
         }
         result

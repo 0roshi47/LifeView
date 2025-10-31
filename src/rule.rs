@@ -32,14 +32,14 @@ impl Default for Rule {
             state_type: StateType::CONTINUOUS,
             micro: 0.35,
             sigma: 0.649,
-            radius: 1, 
+            radius: 1,
             delta: 0.1
         }
     }
 }
 
 #[derive(Clone, Debug)]
-enum StateType {
+pub enum StateType {
     CONTINUOUS,
     // DISCRETE
 }

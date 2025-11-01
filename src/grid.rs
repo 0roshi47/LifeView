@@ -68,13 +68,11 @@ impl Grid {
             for y in -self.rule.radius..self.rule.radius+1 {
                 let neighbour: IVec2 = IVec2::new(x, y);
                 let neighbour_cell: IVec2 = self.wrap_pos(pos+neighbour);
-                let distance: f32 = sqrt(((pos+neighbour) - pos).length_squared() as f32);
-                let ratio: f32;
+                let distance: f32 = (((pos+neighbour) - pos).length_squared() as f32).sqrt();
                 if distance > self.rule.radius as f32 {
-                    ratio = self.rule.radius as f32/distance;
-                } else {
-                    ratio = distance/self.rule.radius as f32;
+                    continue;
                 }
+                let ratio: f32 = 1.0 - distance/self.rule.radius as f32;
                 result += self.cells.get(self.vector_to_idx(neighbour_cell) as usize).unwrap().state*ratio;
             }
         }

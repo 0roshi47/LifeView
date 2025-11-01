@@ -50,7 +50,7 @@ fn setup (
         commands.spawn((
             Mesh2d(handle_mesh.clone()),
             MeshMaterial2d(materials.add(CustomMaterial {
-                color: grid.grid_coloration.color_a
+                color: LinearRgba::new(0.0, 0.0, 0.0, 1.0)
             })),
             MeshTag(i as u32),
             Transform::from_xyz(x+grid.cell_size/2.0, y+grid.cell_size/2.0, 0.0)

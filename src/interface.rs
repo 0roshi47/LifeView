@@ -7,6 +7,7 @@ pub struct UiPlugin;
 
 use crate::grid::Grid;
 use crate::grid::GenerationType;
+use crate::grid_coloration;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
@@ -56,14 +57,12 @@ pub fn ui(
 
         ui.add_space(20.0);
         ui.heading("Colors");
-        ui.horizontal(|ui| {
-            // color_picker(ui, &mut grid.grid_coloration.life_color);
-            ui.label("Life color");
-        });
-        ui.horizontal(|ui| {
-            // color_picker(ui, &mut grid.color_2);
-            ui.label("Death color");
-        });
+        for i in 1..grid.grid_coloration.color_range.len()+1 {
+            ui.horizontal(|ui| {
+                color_picker(ui, &mut grid.grid_coloration.color_range[i-1]);
+                ui.label(format!("Color {i}"));
+            });
+        }
 
         ui.add_space(20.0);
         ui.heading("Rules");
@@ -73,4 +72,14 @@ pub fn ui(
         ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=1.0).text("Delta"));
     });
     Ok(())
+}
+
+fn color_picker(ui: &mut egui::Ui, color: &mut LinearRgba) {
+    let mut c = [
+        (color.red * 255.0) as u8,
+        (color.green * 255.0) as u8,
+        (color.blue * 255.0) as u8,
+    ];
+    egui::color_picker::color_edit_button_srgb(ui, &mut c);
+    *color = LinearRgba::new(c[0] as f32 / 255., c[1] as f32 / 255., c[2] as f32 / 255., 0.);
 }

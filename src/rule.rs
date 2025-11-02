@@ -10,15 +10,15 @@ pub struct Rule {
 }
 
 impl Rule {
-    // pub fn new(state_type: StateType, micro: f32, sigma: f32, radius: usize) -> Self {
-    //     Self {
-    //         state_type: state_type,
-    //         micro: micro,
-    //         sigma: sigma,
-    //         radius: radius,
-    //         delta: 1.0
-    //     }
-    // }
+    pub fn new(state_type: StateType, micro: f32, sigma: f32, radius: i32) -> Self {
+        Self {
+            state_type: state_type,
+            micro: micro,
+            sigma: sigma,
+            radius: radius,
+            delta: 1.0
+        }
+    }
 
     pub fn growth(&self, u: f32) -> f32 {
         let diff: f32 = u-self.micro;
@@ -41,5 +41,5 @@ impl Default for Rule {
 #[derive(Clone, Debug)]
 pub enum StateType {
     CONTINUOUS,
-    // DISCRETE
+    DISCRETE
 }

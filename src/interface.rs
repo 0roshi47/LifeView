@@ -1,13 +1,12 @@
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::app::{App, Plugin};
-use bevy_egui::egui::color_picker;
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 pub struct UiPlugin;
 
 use crate::grid::Grid;
 use crate::grid::GenerationType;
-use crate::grid_coloration;
+use crate::shapes::{Shapes};
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
@@ -19,6 +18,7 @@ impl Plugin for UiPlugin {
 pub fn ui(
     mut contexts: EguiContexts,
     mut grid: ResMut<Grid>,
+    shapes: Res<Shapes>,
     diagnostics: Res<DiagnosticsStore>,
 ) -> Result {
     egui::Window::new("Lenia")
@@ -66,10 +66,19 @@ pub fn ui(
 
         ui.add_space(20.0);
         ui.heading("Rules");
-        ui.add(egui::Slider::new(&mut grid.rule.micro, 0.0..=1.0).text("Micro"));
-        ui.add(egui::Slider::new(&mut grid.rule.sigma, 0.0..=1.0).text("Sigma"));
-        ui.add(egui::Slider::new(&mut grid.rule.radius, 1..=10).text("Radius"));
-        ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=1.0).text("Delta"));
+        ui.add(egui::Slider::new(&mut grid.rule.micro, 0. ..=5.).text("Micro"));
+        ui.add(egui::Slider::new(&mut grid.rule.sigma, 0. ..=5.).text("Sigma"));
+        ui.add(egui::Slider::new(&mut grid.rule.radius, 1..=15).text("Radius"));
+        ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=1.).text("Delta"));
+
+        ui.add_space(20.0);
+        ui.heading("Shapes");
+        for i in 0..shapes.0.len() {
+            let name: String = shapes.0[i].name.clone();
+            if ui.button(format!("{name}")).clicked() {
+                grid.spawn_shape(name, shapes.0.clone());
+            }
+        }
     });
     Ok(())
 }

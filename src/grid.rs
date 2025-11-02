@@ -1,4 +1,5 @@
-use bevy::math::ops::sqrt;
+use std::f32::consts::PI;
+
 use bevy::{
     prelude::*,
 };
@@ -6,6 +7,7 @@ use bevy::{
 use crate::cell::Cell;
 use crate::grid_coloration::GridColoration;
 use crate::rule::Rule;
+use crate::shapes::Shape;
 
 use rand::Rng;
 
@@ -52,7 +54,6 @@ impl Grid {
             }
             self.cells[i] = Cell::new(state);
         }
-        self.paused = true;
     }
 
     pub fn clear(&mut self) {
@@ -73,7 +74,7 @@ impl Grid {
                     continue;
                 }
                 let ratio: f32 = 1.0 - distance/self.rule.radius as f32;
-                result += self.cells.get(self.vector_to_idx(neighbour_cell) as usize).unwrap().state*ratio;
+                result += (self.cells[self.vector_to_idx(neighbour_cell) as usize].state*ratio)/((self.rule.radius as f32)*PI);
             }
         }
         result
@@ -105,6 +106,24 @@ impl Grid {
 
     pub fn pause(&mut self) {
         self.paused = !self.paused;
+    }
+
+    pub fn spawn_shape(
+        &mut self,
+        shape_name: String,
+        shapes: Vec<Shape>,
+    ) {
+        let mut shape: Shape = shapes[0].clone();
+        for current_shape in shapes {
+            if current_shape.name == shape_name {
+                shape = current_shape;
+            }
+        }
+        let grid_center: IVec2 = IVec2::new(self.width as i32/2, self.height as i32/2);
+        for i in 0..shape.cells_state.len() {
+            let idx: usize = self.vector_to_idx(grid_center+shape.cells_pos[i]) as usize;
+            self.cells[idx].state = shape.cells_state[i];
+        }   
     }
 
 }
@@ -154,7 +173,7 @@ mod tests {
     }
 }
 
-#[derive(Resource, Debug, PartialEq)]
+#[derive(Resource, Debug, PartialEq, Clone, Copy)]
 pub enum GenerationType {
     RANDOM,
     NOISE

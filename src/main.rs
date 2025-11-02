@@ -6,16 +6,19 @@ use bevy_egui::EguiPlugin;
 use grid::Grid;
 use crate::grid::update_generation;
 use crate::interface::UiPlugin;
+use crate::shapes::insert_shapes;
+use crate::shapes::add_shapes;
 
 mod interface;
 mod cell;
 mod grid;
 mod rule;
 mod grid_coloration;
+mod shapes;
 
 const SHADER_ASSET_PATH: &str = "shaders/cell.wgsl";
 
-const BASE_CELL_WIDTH: usize = 75;
+const BASE_CELL_WIDTH: usize = 100;
 
 const DRAW_STRENGHT: f32 = 0.05; 
 
@@ -27,6 +30,8 @@ fn main() {
         .add_plugins(UiPlugin)
         .add_plugins(Material2dPlugin::<CustomMaterial>::default())
         .add_systems(Startup, setup)
+        .add_systems(Startup, insert_shapes)
+        .add_systems(Startup, add_shapes.after(insert_shapes))
         .add_systems(FixedUpdate, update_generation)
         .add_systems(FixedUpdate, animate_materials)
         .add_systems(FixedUpdate, mouse_click)
@@ -90,17 +95,17 @@ fn mouse_click(
     windows: Query<&mut Window>,
     grid: ResMut<Grid>
 ) {
-    // let window = windows.single().unwrap();
-    // if mouse.pressed(MouseButton::Left) {
-    //     if let Some(position) = window.cursor_position() {
-    //         // draw(position, grid, 1.0, window);
-    //     }
-    // }
-    // else if mouse.pressed(MouseButton::Right) {
-    //     if let Some(position) = window.cursor_position() {
-    //         // draw(position, grid, -1.0, window);
-    //     }
-    // }
+    let window = windows.single().unwrap();
+    if mouse.pressed(MouseButton::Left) {
+        if let Some(position) = window.cursor_position() {
+            draw(position, grid, 1.0, window);
+        }
+    }
+    else if mouse.pressed(MouseButton::Right) {
+        if let Some(position) = window.cursor_position() {
+            draw(position, grid, -1.0, window);
+        }
+    }
 }
 
 fn draw(
@@ -115,5 +120,6 @@ fn draw(
     let gy = (world_y / grid.cell_size).floor() as i32;
     let true_pos = grid.wrap_pos(IVec2::new(gx, gy));
     let idx: usize = grid.vector_to_idx(true_pos) as usize;
-    grid.cells[idx].state += DRAW_STRENGHT*pressure;
+    grid.cells[idx].state += DRAW_STRENGHT*pressure*grid.rule.delta;
+    grid.cells[idx].state = grid.cells[idx].state.clamp(0., 1.);
 }

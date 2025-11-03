@@ -7,7 +7,7 @@ use bevy::{
     sprite_render::{Material2d, Material2dPlugin},
 };
 
-use crate::Grid;
+use crate::{Grid, cell::Cell};
 
 const SHADER_ASSET_PATH: &str = "shaders/cell.wgsl";
 
@@ -34,9 +34,9 @@ fn setup(
     let height: usize = (BASE_CELL_WIDTH * 9) / 16;
     let grid: Grid = Grid::new(BASE_CELL_WIDTH, height, cell_size);
     let handle_mesh: Handle<Mesh> = meshes.add(Rectangle::new(cell_size, cell_size));
-    // let handle_material: Handle<CustomMaterial> = materials.add(CustomMaterial {
-    //     color: LinearRgba::new(0.0, 0.0, 0.0, 1.0),
-    // });
+    let handle_material: Handle<CustomMaterial> = materials.add(CustomMaterial {
+        cells: grid.cells.clone(),
+    });
     for (i, _cell) in grid.cells.iter().enumerate() {
         let x: f32 =
             (i % grid.width) as f32 * grid.cell_size - (grid.width as f32 * grid.cell_size) / 2.0;
@@ -44,9 +44,7 @@ fn setup(
             (i / grid.width) as f32 * grid.cell_size - (grid.height as f32 * grid.cell_size) / 2.0;
         commands.spawn((
             Mesh2d(handle_mesh.clone()),
-            MeshMaterial2d(materials.add(CustomMaterial {
-                color: LinearRgba::new(0.0, 0.0, 0.0, 1.0),
-            })),
+            MeshMaterial2d(handle_material.clone()),
             MeshTag(i as u32),
             Transform::from_xyz(x + grid.cell_size / 2.0, y + grid.cell_size / 2.0, 0.0),
         ));
@@ -59,19 +57,19 @@ pub fn animate_materials(
     query: Query<(&MeshTag, &MeshMaterial2d<CustomMaterial>)>,
     mut materials: ResMut<Assets<CustomMaterial>>,
 ) {
-    for (mesh_tag, mat_handle) in query.iter() {
-        let i = mesh_tag.0 as usize;
-        let new_color: LinearRgba = grid.grid_coloration.lerp(grid.cells[i].state);
-        if let Some(mat) = materials.get_mut(&mat_handle.0) {
-            mat.color = new_color
-        }
-    }
+    // for (mesh_tag, mat_handle) in query.iter() {
+    //     let i = mesh_tag.0 as usize;
+    //     let new_color: LinearRgba = grid.grid_coloration.lerp(grid.cells[i].state);
+    //     if let Some(mat) = materials.get_mut(&mat_handle.0) {
+    //         mat.color = new_color
+    //     }
+    // }
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct CustomMaterial {
-    #[uniform(0)]
-    color: LinearRgba,
+    #[storage(0, read_only)]
+    cells: Vec<Cell>,
 }
 
 impl Material2d for CustomMaterial {

@@ -1,13 +1,13 @@
+use bevy::app::{App, Plugin};
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
-use bevy::app::{App, Plugin};
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
-pub struct UiPlugin;
+use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
 
-use crate::grid::Grid;
 use crate::grid::GenerationType;
-use crate::shapes::{Shapes};
+use crate::grid::Grid;
+use crate::shapes::Shapes;
 
+pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         assert!(app.is_plugin_added::<EguiPlugin>());
@@ -21,10 +21,10 @@ pub fn ui(
     shapes: Res<Shapes>,
     diagnostics: Res<DiagnosticsStore>,
 ) -> Result {
-    egui::Window::new("Lenia")
-    .show(contexts.ctx_mut()?, |ui| {
-        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) 
-        && let Some(value) = fps.smoothed() {
+    egui::Window::new("Lenia").show(contexts.ctx_mut()?, |ui| {
+        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS)
+            && let Some(value) = fps.smoothed()
+        {
             ui.label(format!("FPS: {value:.2}"));
         }
 
@@ -43,23 +43,15 @@ pub fn ui(
         egui::ComboBox::from_label("Init generation")
             .selected_text(format!("{:?}", grid.generation_type))
             .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut grid.generation_type,
-                    GenerationType::NOISE,
-                    "Noise",
-                );
-                ui.selectable_value(
-                    &mut grid.generation_type,
-                    GenerationType::RANDOM,
-                    "Random",
-                );
+                ui.selectable_value(&mut grid.generation_type, GenerationType::NOISE, "Noise");
+                ui.selectable_value(&mut grid.generation_type, GenerationType::RANDOM, "Random");
             });
 
         ui.add_space(20.0);
         ui.heading("Colors");
-        for i in 1..grid.grid_coloration.color_range.len()+1 {
+        for i in 1..grid.grid_coloration.color_range.len() + 1 {
             ui.horizontal(|ui| {
-                color_picker(ui, &mut grid.grid_coloration.color_range[i-1]);
+                color_picker(ui, &mut grid.grid_coloration.color_range[i - 1]);
                 ui.label(format!("Color {i}"));
             });
         }
@@ -90,5 +82,10 @@ fn color_picker(ui: &mut egui::Ui, color: &mut LinearRgba) {
         (color.blue * 255.0) as u8,
     ];
     egui::color_picker::color_edit_button_srgb(ui, &mut c);
-    *color = LinearRgba::new(c[0] as f32 / 255., c[1] as f32 / 255., c[2] as f32 / 255., 0.);
+    *color = LinearRgba::new(
+        c[0] as f32 / 255.,
+        c[1] as f32 / 255.,
+        c[2] as f32 / 255.,
+        0.,
+    );
 }

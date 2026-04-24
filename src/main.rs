@@ -1,12 +1,13 @@
+use bevy::ui::update;
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
 
 use crate::grid::update_generation;
 use crate::instancing::CellMaterialPlugin;
+use crate::instancing::update_instance_data;
 use crate::interface::UiPlugin;
 use crate::shapes::add_shapes;
 use crate::shapes::insert_shapes;
 use bevy_egui::EguiPlugin;
-use grid::Grid;
 
 mod cell;
 mod grid;
@@ -22,21 +23,26 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        .add_plugins(EguiPlugin::default())
+    .add_plugins(EguiPlugin {
+    enable_multipass_for_primary_context: true,
+    ..EguiPlugin::default()
+})
         .add_plugins(CellMaterialPlugin)
         .add_plugins(UiPlugin)
         .add_systems(Startup, insert_shapes)
-        .add_systems(Startup, add_shapes.after(insert_shapes)) //todo fusionner insert shapes et add_shapes
+        .add_systems(Startup, add_shapes.after(insert_shapes))
         .add_systems(FixedUpdate, update_generation)
-        .add_systems(FixedUpdate, mouse_click)
+        .add_systems(FixedUpdate,update_instance_data.after(crate::grid::update_generation))
+        .add_systems(FixedUpdate, mouse_click.after(update_generation))
         .run();
 }
 
 fn mouse_click(
     mouse: Res<ButtonInput<MouseButton>>,
-    windows: Query<&mut Window>,
-    grid: ResMut<Grid>,
+    windows: Query<&Window>,
+    grid: Option<ResMut<grid::Grid>>,
 ) {
+    let Some(grid) = grid else { return };
     let window = windows.single().unwrap();
     if mouse.pressed(MouseButton::Left) {
         if let Some(position) = window.cursor_position() {
@@ -49,8 +55,8 @@ fn mouse_click(
     }
 }
 
-fn draw(position: Vec2, mut grid: ResMut<Grid>, pressure: f32, window: &Window) {
-    let world_x = position.x + window.width();
+fn draw(position: Vec2, mut grid: ResMut<grid::Grid>, pressure: f32, window: &Window) {
+    let world_x = position.x;
     let world_y = window.height() - position.y;
     let gx = (world_x / grid.cell_size).floor() as i32;
     let gy = (world_y / grid.cell_size).floor() as i32;

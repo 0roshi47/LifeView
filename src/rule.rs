@@ -30,10 +30,10 @@ impl Default for Rule {
     fn default() -> Self {
         Self {
             state_type: StateType::CONTINUOUS,
-            micro: 0.156,
-            sigma: 0.0118,
-            radius: 5,
-            delta: 0.1
+            micro: 0.15,
+            sigma: 0.015,
+            radius: 13,
+            delta: 0.1,
         }
     }
 }

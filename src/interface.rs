@@ -17,10 +17,12 @@ impl Plugin for UiPlugin {
 
 pub fn ui(
     mut contexts: EguiContexts,
-    mut grid: ResMut<Grid>,
-    shapes: Res<Shapes>,
+    grid: Option<ResMut<Grid>>,
+    shapes: Option<Res<Shapes>>,
     diagnostics: Res<DiagnosticsStore>,
 ) -> Result {
+    let Some(mut grid) = grid else { return Ok(()); };
+    let Some(shapes) = shapes else { return Ok(()); };
     egui::Window::new("Lenia").show(contexts.ctx_mut()?, |ui| {
         if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS)
             && let Some(value) = fps.smoothed()
@@ -86,6 +88,6 @@ fn color_picker(ui: &mut egui::Ui, color: &mut LinearRgba) {
         c[0] as f32 / 255.,
         c[1] as f32 / 255.,
         c[2] as f32 / 255.,
-        0.,
+        1.0, // <-- was 0.0, making everything transparent!
     );
 }

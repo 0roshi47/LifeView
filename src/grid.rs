@@ -31,7 +31,7 @@ impl Grid {
             rule: Rule::default(),
             grid_coloration: GridColoration::default(),
             paused: false,
-            generation_type: GenerationType::RANDOM,
+            generation_type: GenerationType::EMPTY,
         };
         grid.init();
         grid
@@ -41,7 +41,13 @@ impl Grid {
         let cx = self.width as f32 / 2.0;
         let cy = self.height as f32 / 2.0;
         let r = self.width.min(self.height) as f32 / 6.0;
+        if self.generation_type == GenerationType::EMPTY { return }
         for i in 0..self.cells.len() {
+            if self.generation_type == GenerationType::RANDOM {
+                let state = rand::rng().random();
+                self.cells[i] = Cell::new(state);
+                continue;
+            }
             let pos = self.idx_to_vector(i as i32);
             let dx = pos.x as f32 - cx;
             let dy = pos.y as f32 - cy;
@@ -139,8 +145,6 @@ pub fn update_generation(grid: Option<ResMut<Grid>>) {
     if grid.paused { return; }
     let new_generation = grid.generation();
     grid.cells = new_generation;
-    let nonzero = grid.cells.iter().filter(|c| c.state > 0.0).count();
-    // println!("update: nonzero cells = {nonzero} / {}", grid.cells.len());
 }
 
 #[cfg(test)]
@@ -180,6 +184,7 @@ mod tests {
 
 #[derive(Resource, Debug, PartialEq, Clone, Copy)]
 pub enum GenerationType {
+    EMPTY,
     RANDOM,
-    NOISE,
+    BLOB,
 }

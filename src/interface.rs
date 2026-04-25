@@ -45,8 +45,9 @@ pub fn ui(
         egui::ComboBox::from_label("Init generation")
             .selected_text(format!("{:?}", grid.generation_type))
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut grid.generation_type, GenerationType::NOISE, "Noise");
+                ui.selectable_value(&mut grid.generation_type, GenerationType::EMPTY, "Empty");
                 ui.selectable_value(&mut grid.generation_type, GenerationType::RANDOM, "Random");
+                ui.selectable_value(&mut grid.generation_type, GenerationType::BLOB, "Blob");
             });
 
         ui.add_space(20.0);

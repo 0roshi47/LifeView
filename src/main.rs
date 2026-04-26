@@ -1,4 +1,3 @@
-use bevy::ui::update;
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
 
 use crate::grid::update_generation;
@@ -23,16 +22,18 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
-    .add_plugins(EguiPlugin {
-    enable_multipass_for_primary_context: true,
-    ..EguiPlugin::default()
-})
+        .add_plugins(EguiPlugin {
+            ..EguiPlugin::default()
+        })
         .add_plugins(CellMaterialPlugin)
         .add_plugins(UiPlugin)
         .add_systems(Startup, insert_shapes)
         .add_systems(Startup, add_shapes.after(insert_shapes))
         .add_systems(FixedUpdate, update_generation)
-        .add_systems(FixedUpdate,update_instance_data.after(crate::grid::update_generation))
+        .add_systems(
+            FixedUpdate,
+            update_instance_data.after(crate::grid::update_generation),
+        )
         .add_systems(FixedUpdate, mouse_click.after(update_generation))
         .run();
 }

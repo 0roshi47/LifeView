@@ -1,4 +1,7 @@
-use bevy::{ecs::system::{Commands, ResMut}, math::IVec2};
+use bevy::{
+    ecs::system::{Commands, ResMut},
+    math::IVec2,
+};
 
 use crate::rule::{Rule, StateType};
 
@@ -11,8 +14,18 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn new(name: String, optimal_rule: Rule, cells_state: Vec<f32>, cells_pos: Vec<IVec2>) -> Self {
-        Self { name, optimal_rule, cells_state, cells_pos }
+    pub fn new(
+        name: String,
+        optimal_rule: Rule,
+        cells_state: Vec<f32>,
+        cells_pos: Vec<IVec2>,
+    ) -> Self {
+        Self {
+            name,
+            optimal_rule,
+            cells_state,
+            cells_pos,
+        }
     }
 }
 

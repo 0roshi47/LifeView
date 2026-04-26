@@ -1,5 +1,3 @@
-use std::f32::consts::PI;
-
 use bevy::prelude::*;
 
 use crate::cell::Cell;
@@ -30,8 +28,8 @@ impl Grid {
             cell_size: cell_size,
             rule: Rule::default(),
             grid_coloration: GridColoration::default(),
-            paused: false,
-            generation_type: GenerationType::EMPTY,
+            paused: true,
+            generation_type: GenerationType::RANDOM,
         };
         grid.init();
         grid
@@ -41,7 +39,9 @@ impl Grid {
         let cx = self.width as f32 / 2.0;
         let cy = self.height as f32 / 2.0;
         let r = self.width.min(self.height) as f32 / 6.0;
-        if self.generation_type == GenerationType::EMPTY { return }
+        if self.generation_type == GenerationType::EMPTY {
+            return;
+        }
         for i in 0..self.cells.len() {
             if self.generation_type == GenerationType::RANDOM {
                 let state = rand::rng().random();
@@ -85,7 +85,9 @@ impl Grid {
             for x in -self.rule.radius..self.rule.radius + 1 {
                 for y in -self.rule.radius..self.rule.radius + 1 {
                     let d = (IVec2::new(x, y).as_vec2()).length();
-                    if d <= r { s += 1.0 - d / r; }
+                    if d <= r {
+                        s += 1.0 - d / r;
+                    }
                 }
             }
             s
@@ -109,16 +111,16 @@ impl Grid {
     }
 
     pub fn generation(&self) -> Vec<Cell> {
-    let mut result: Vec<Cell> = vec![Cell::default(); self.width * self.height];
-    for (idx, _cell) in self.cells.iter().enumerate() {
-        let life_around_value: f32 = self.life_around(self.idx_to_vector(idx as i32));
-        // println!("life_around[0]: {life_around_value}"); // remove
-        let new_value: f32 =
-            self.cells[idx].state + self.rule.growth(life_around_value) * self.rule.delta;
-        result[idx] = Cell::new(new_value.clamp(0.0, 1.0));
-        // break; // <-- REMOVE THIS, it only computes cell 0 and leaves all others at 0.0
-    }
-    result
+        let mut result: Vec<Cell> = vec![Cell::default(); self.width * self.height];
+        for (idx, _cell) in self.cells.iter().enumerate() {
+            let life_around_value: f32 = self.life_around(self.idx_to_vector(idx as i32));
+            // println!("life_around[0]: {life_around_value}"); // remove
+            let new_value: f32 =
+                self.cells[idx].state + self.rule.growth(life_around_value) * self.rule.delta;
+            result[idx] = Cell::new(new_value.clamp(0.0, 1.0));
+            // break; // <-- REMOVE THIS, it only computes cell 0 and leaves all others at 0.0
+        }
+        result
     }
 
     pub fn pause(&mut self) {
@@ -142,7 +144,9 @@ impl Grid {
 
 pub fn update_generation(grid: Option<ResMut<Grid>>) {
     let Some(mut grid) = grid else { return };
-    if grid.paused { return; }
+    if grid.paused {
+        return;
+    }
     let new_generation = grid.generation();
     grid.cells = new_generation;
 }

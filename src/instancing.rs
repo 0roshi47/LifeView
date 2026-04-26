@@ -1,13 +1,30 @@
 use bevy::{
-    core_pipeline::core_2d::Transparent2d, ecs::{query::QueryItem, system::{SystemParamItem, lifetimeless::*}}, math::FloatOrd, mesh::{MeshVertexBufferLayoutRef, VertexBufferLayout}, prelude::*, render::{
-        Render, RenderApp, RenderStartup, RenderSystems, extract_component::{ExtractComponent, ExtractComponentPlugin}, render_asset::RenderAssets, render_phase::*, render_resource::*, renderer::RenderDevice, sync_world::MainEntity, view::ExtractedView
-    }, sprite_render::{init_mesh_2d_pipeline, Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup, SetMesh2dViewBindGroup}
-    // sprite::{Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup, SetMesh2dViewBindGroup},
+    core_pipeline::core_2d::Transparent2d,
+    ecs::{
+        query::QueryItem,
+        system::{SystemParamItem, lifetimeless::*},
+    },
+    math::FloatOrd,
+    mesh::{MeshVertexBufferLayoutRef, VertexBufferLayout},
+    prelude::*,
+    render::{
+        Render, RenderApp, RenderStartup, RenderSystems,
+        extract_component::{ExtractComponent, ExtractComponentPlugin},
+        render_asset::RenderAssets,
+        render_phase::*,
+        render_resource::*,
+        renderer::RenderDevice,
+        sync_world::MainEntity,
+        view::ExtractedView,
+    },
+    sprite_render::{
+        Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup,
+        SetMesh2dViewBindGroup, init_mesh_2d_pipeline,
+    }, // sprite::{Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup, SetMesh2dViewBindGroup},
 };
 use bytemuck::{Pod, Zeroable};
 
 use crate::grid::Grid;
-use crate::grid_coloration::GridColoration;
 
 const SHADER_ASSET_PATH: &str = "shaders/cell.wgsl";
 const BASE_CELL_WIDTH: usize = 75;
@@ -16,7 +33,7 @@ const BASE_CELL_WIDTH: usize = 75;
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct CellInstance {
-    pub position: Vec2,   // world position
+    pub position: Vec2, // world position
     pub cell_size: f32,
     pub state: f32,
 }
@@ -48,19 +65,21 @@ impl Plugin for CellMaterialPlugin {
         app.sub_app_mut(RenderApp)
             .add_render_command::<Transparent2d, DrawCells>()
             .init_resource::<SpecializedMeshPipelines<CellPipeline>>()
-            .add_systems(RenderStartup, init_cell_pipeline.after(init_mesh_2d_pipeline))
-            .add_systems(Render, (
-                queue_cells.in_set(RenderSystems::QueueMeshes),
-                prepare_cell_buffers.in_set(RenderSystems::PrepareResources),
-            ));
+            .add_systems(
+                RenderStartup,
+                init_cell_pipeline.after(init_mesh_2d_pipeline),
+            )
+            .add_systems(
+                Render,
+                (
+                    queue_cells.in_set(RenderSystems::QueueMeshes),
+                    prepare_cell_buffers.in_set(RenderSystems::PrepareResources),
+                ),
+            );
     }
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    windows: Query<&Window>,
-) {
+fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Query<&Window>) {
     commands.spawn(Camera2d);
 
     let window = windows.single().unwrap();
@@ -68,11 +87,19 @@ fn setup(
     let grid_height = (BASE_CELL_WIDTH * 9) / 16;
     let grid = Grid::new(BASE_CELL_WIDTH, grid_height, cell_size);
 
-    let instances: Vec<CellInstance> = (0..grid.cells.len()).map(|i| {
-        let x = (i % grid.width) as f32 * cell_size - (grid.width as f32 * cell_size) / 2.0 + cell_size / 2.0;
-        let y = (i / grid.width) as f32 * cell_size - (grid.height as f32 * cell_size) / 2.0 + cell_size / 2.0;
-        CellInstance { position: Vec2::new(x, y), cell_size, state: grid.cells[i].state }
-    }).collect();
+    let instances: Vec<CellInstance> = (0..grid.cells.len())
+        .map(|i| {
+            let x = (i % grid.width) as f32 * cell_size - (grid.width as f32 * cell_size) / 2.0
+                + cell_size / 2.0;
+            let y = (i / grid.width) as f32 * cell_size - (grid.height as f32 * cell_size) / 2.0
+                + cell_size / 2.0;
+            CellInstance {
+                position: Vec2::new(x, y),
+                cell_size,
+                state: grid.cells[i].state,
+            }
+        })
+        .collect();
 
     // Single quad mesh (unit square, will be scaled per-instance in shader)
     let mesh = meshes.add(Rectangle::new(1.0, 1.0));
@@ -94,7 +121,9 @@ pub fn update_instance_data(
     mut query: Query<&mut CellInstanceData, With<CellGrid>>,
 ) {
     let Some(grid) = grid else { return };
-    let Ok(mut instance_data) = query.single_mut() else { return };
+    let Ok(mut instance_data) = query.single_mut() else {
+        return;
+    };
     for (i, inst) in instance_data.0.iter_mut().enumerate() {
         inst.state = grid.cells[i].state;
     }
@@ -146,9 +175,11 @@ fn init_cell_pipeline(
 impl SpecializedMeshPipeline for CellPipeline {
     type Key = Mesh2dPipelineKey;
 
-    fn specialize(&self, key: Self::Key, layout: &MeshVertexBufferLayoutRef)
-        -> Result<RenderPipelineDescriptor, SpecializedMeshPipelineError>
-    {
+    fn specialize(
+        &self,
+        key: Self::Key,
+        layout: &MeshVertexBufferLayoutRef,
+    ) -> Result<RenderPipelineDescriptor, SpecializedMeshPipelineError> {
         let mut desc = self.mesh2d_pipeline.specialize(key, layout)?;
         desc.vertex.shader = self.shader.clone();
         desc.vertex.buffers.push(VertexBufferLayout {
@@ -156,9 +187,17 @@ impl SpecializedMeshPipeline for CellPipeline {
             step_mode: VertexStepMode::Instance,
             attributes: vec![
                 // @location(3) position + cell_size: vec3<f32>
-                VertexAttribute { format: VertexFormat::Float32x3, offset: 0, shader_location: 3 },
+                VertexAttribute {
+                    format: VertexFormat::Float32x3,
+                    offset: 0,
+                    shader_location: 3,
+                },
                 // @location(4) state: f32 — offset by 12 bytes (3×f32)
-                VertexAttribute { format: VertexFormat::Float32, offset: 12, shader_location: 4 },
+                VertexAttribute {
+                    format: VertexFormat::Float32,
+                    offset: 12,
+                    shader_location: 4,
+                },
             ],
         });
         desc.fragment.as_mut().unwrap().shader = self.shader.clone();
@@ -180,14 +219,23 @@ fn queue_cells(
 ) {
     let draw_fn = draw_functions.read().id::<DrawCells>();
     for (view, msaa) in &views {
-        let Some(phase) = transparent_phases.get_mut(&view.retained_view_entity) else { continue };
+        let Some(phase) = transparent_phases.get_mut(&view.retained_view_entity) else {
+            continue;
+        };
         let msaa_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples());
         let view_key = msaa_key | Mesh2dPipelineKey::from_hdr(view.hdr);
         for (entity, main_entity) in &material_meshes {
-            let Some(mesh_instance) = render_mesh_instances.get(main_entity) else { continue };
-            let Some(mesh) = meshes.get(mesh_instance.mesh_asset_id) else { continue };
-            let key = view_key | Mesh2dPipelineKey::from_primitive_topology(mesh.primitive_topology());
-            let pipeline_id = pipelines.specialize(&pipeline_cache, &pipeline, key, &mesh.layout).unwrap();
+            let Some(mesh_instance) = render_mesh_instances.get(main_entity) else {
+                continue;
+            };
+            let Some(mesh) = meshes.get(mesh_instance.mesh_asset_id) else {
+                continue;
+            };
+            let key =
+                view_key | Mesh2dPipelineKey::from_primitive_topology(mesh.primitive_topology());
+            let pipeline_id = pipelines
+                .specialize(&pipeline_cache, &pipeline, key, &mesh.layout)
+                .unwrap();
             phase.add(Transparent2d {
                 entity: (entity, *main_entity),
                 draw_function: draw_fn,
@@ -228,17 +276,32 @@ impl<P: PhaseItem> RenderCommand<P> for DrawCellsInstanced {
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         let mesh_allocator = mesh_allocator.into_inner();
-        let Some(mesh_instance) = mesh_instances.get(&item.main_entity()) else { return RenderCommandResult::Skip };
-        let Some(gpu_mesh) = meshes.into_inner().get(mesh_instance.mesh_asset_id) else { return RenderCommandResult::Skip };
-        let Some(inst_buf) = instance_buffer else { return RenderCommandResult::Skip };
-        let Some(vertex_slice) = mesh_allocator.mesh_vertex_slice(&mesh_instance.mesh_asset_id) else { return RenderCommandResult::Skip };
+        let Some(mesh_instance) = mesh_instances.get(&item.main_entity()) else {
+            return RenderCommandResult::Skip;
+        };
+        let Some(gpu_mesh) = meshes.into_inner().get(mesh_instance.mesh_asset_id) else {
+            return RenderCommandResult::Skip;
+        };
+        let Some(inst_buf) = instance_buffer else {
+            return RenderCommandResult::Skip;
+        };
+        let Some(vertex_slice) = mesh_allocator.mesh_vertex_slice(&mesh_instance.mesh_asset_id)
+        else {
+            return RenderCommandResult::Skip;
+        };
 
         pass.set_vertex_buffer(0, vertex_slice.buffer.slice(..));
         pass.set_vertex_buffer(1, inst_buf.buffer.slice(..));
 
         match &gpu_mesh.buffer_info {
-            bevy::render::mesh::RenderMeshBufferInfo::Indexed { index_format, count } => {
-                let Some(idx_slice) = mesh_allocator.mesh_index_slice(&mesh_instance.mesh_asset_id) else { return RenderCommandResult::Skip };
+            bevy::render::mesh::RenderMeshBufferInfo::Indexed {
+                index_format,
+                count,
+            } => {
+                let Some(idx_slice) = mesh_allocator.mesh_index_slice(&mesh_instance.mesh_asset_id)
+                else {
+                    return RenderCommandResult::Skip;
+                };
                 pass.set_index_buffer(idx_slice.buffer.slice(..), 0, *index_format);
                 pass.draw_indexed(
                     idx_slice.range.start..(idx_slice.range.start + count),

@@ -20,7 +20,14 @@ const DRAW_STRENGHT: f32 = 0.05;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                fit_canvas_to_parent: true,
+                canvas: Some("#bevy".to_string()),
+                ..default()
+            }),
+            ..default()
+        }))
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(EguiPlugin {
             ..EguiPlugin::default()

@@ -7,6 +7,9 @@ use crate::grid::GenerationType;
 use crate::grid::Grid;
 use crate::shapes::Shapes;
 
+pub const PANEL_WIDTH: f32 = 230.;
+pub const TOPBAR_HEIGHT: f32 = 32.;
+
 pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
@@ -30,7 +33,7 @@ pub fn ui(
 
     // ── Top bar ───────────────────────────────────────────────────
     egui::TopBottomPanel::top("topbar")
-        .exact_height(32.0)
+        .exact_height(TOPBAR_HEIGHT)
         .show(contexts.ctx_mut()?, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.label(egui::RichText::new("LifeView").strong());
@@ -60,35 +63,14 @@ pub fn ui(
     // ── Side panel ────────────────────────────────────────────────
     egui::SidePanel::left("main_panel")
         .resizable(false)
-        .exact_width(220.0)
+        .exact_width(PANEL_WIDTH)
         .show(contexts.ctx_mut()?, |ui| {
-            // ── System ────────────────────────────────────────────
-            ui.add_space(8.0);
-            ui.label(egui::RichText::new("System").heading());
-            ui.add_space(4.0);
-
-            for (label, tag) in [
-                ("Lenia", "continuous"),
-                ("Game of Life", "discrete"),
-                ("SmoothLife", "continuous"),
-                ("Brian's Brain", "discrete"),
-            ] {
-                let selected = label == "Lenia"; // placeholder
-                if ui
-                    .add_sized(
-                        [204.0, 24.0],
-                        egui::SelectableLabel::new(selected, format!("{label}  {tag}")),
-                    )
-                    .clicked()
-                { /* TODO: switch system */ }
-            }
-
-            ui.separator();
-
             // ── Grid ──────────────────────────────────────────────
-            ui.add_space(4.0);
+            ui.add_space(8.0);
             ui.label(egui::RichText::new("Grid").heading());
             ui.add_space(4.0);
+
+            ui.add(egui::Slider::new(&mut grid.cell_size, 4.0..=32.0).text("Cell size"));
 
             egui::ComboBox::from_label("Topology")
                 .selected_text("Toroidal (loop)")

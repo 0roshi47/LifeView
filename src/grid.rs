@@ -36,6 +36,7 @@ impl Grid {
     }
 
     pub fn init(&mut self) {
+        self.paused = true;
         let cx = self.width as f32 / 2.0;
         let cy = self.height as f32 / 2.0;
         let r = self.width.min(self.height) as f32 / 6.0;

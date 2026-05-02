@@ -5,6 +5,7 @@ use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
 
 use crate::grid::GenerationType;
 use crate::grid::Grid;
+use crate::rule::Rule;
 use crate::shapes::Shapes;
 
 pub const PANEL_WIDTH: f32 = 230.;
@@ -124,14 +125,20 @@ pub fn ui(
             ui.label(egui::RichText::new("Shapes").heading());
             ui.add_space(4.0);
 
+            let shape_names: Vec<(String, Rule)> = shapes
+                .0
+                .iter()
+                .map(|s| (s.name.clone(), s.optimal_rule.clone()))
+                .collect();
+
             egui::Grid::new("shapes_grid")
                 .num_columns(2)
                 .spacing([6.0, 6.0])
                 .show(ui, |ui| {
-                    for (i, shape) in shapes.0.iter().enumerate() {
-                        let name = shape.name.clone();
-                        if ui.button(&name).clicked() {
-                            grid.spawn_shape(name, shapes.0.clone());
+                    for (i, (name, rule)) in shape_names.iter().enumerate() {
+                        if ui.button(name).clicked() {
+                            grid.spawn_shape(name.clone(), shapes.0.clone());
+                            grid.rule = rule.clone();
                         }
                         if i % 2 == 1 {
                             ui.end_row();

@@ -1,3 +1,4 @@
+use bevy::math::ops::exp;
 use bevy::prelude::*;
 
 use crate::cell::Cell;
@@ -53,7 +54,7 @@ impl Grid {
             let dx = pos.x as f32 - cx;
             let dy = pos.y as f32 - cy;
             let dist = (dx * dx + dy * dy).sqrt();
-            // Smooth Gaussian blob — gives Lenia something to work with
+            // Smooth Gaussian blob
             let state = (-0.5 * (dist / (r * 0.5)).powi(2)).exp();
             self.cells[i] = Cell::new(state);
         }
@@ -67,33 +68,29 @@ impl Grid {
 
     pub fn life_around(&self, pos: IVec2) -> f32 {
         let mut result: f32 = 0.0;
+        let mut kernel_sum: f32 = 0.0;
         let r = self.rule.radius as f32;
-        for x in -self.rule.radius..self.rule.radius + 1 {
-            for y in -self.rule.radius..self.rule.radius + 1 {
-                let neighbour = IVec2::new(x, y);
-                let distance = (neighbour.as_vec2()).length();
-                if distance > r {
+
+        for x in -self.rule.radius..=self.rule.radius {
+            for y in -self.rule.radius..=self.rule.radius {
+                let d = (IVec2::new(x, y).as_vec2()).length();
+                if d > r || d == 0.0 {
                     continue;
                 }
-                let neighbour_cell = self.wrap_pos(pos + neighbour);
-                let ratio: f32 = 1.0 - distance / r;
-                result += self.cells[self.vector_to_idx(neighbour_cell) as usize].state * ratio;
+                let t = d / r; // normalised distance in (0, 1]
+                // Bell curve peaked at t=0.5, width ~0.15 — matches the tutorial's kernel
+                let w = (-((t - 0.5) / 0.15).powi(2) / 2.0).exp();
+                let neighbour_cell = self.wrap_pos(pos + IVec2::new(x, y));
+                result += self.cells[self.vector_to_idx(neighbour_cell) as usize].state * w;
+                kernel_sum += w;
             }
         }
-        // Normalize by the actual sum of weights so result stays in [0,1]
-        let kernel_sum: f32 = {
-            let mut s = 0.0f32;
-            for x in -self.rule.radius..self.rule.radius + 1 {
-                for y in -self.rule.radius..self.rule.radius + 1 {
-                    let d = (IVec2::new(x, y).as_vec2()).length();
-                    if d <= r {
-                        s += 1.0 - d / r;
-                    }
-                }
-            }
-            s
-        };
-        result / kernel_sum.max(1.0)
+
+        if kernel_sum == 0.0 {
+            0.0
+        } else {
+            result / kernel_sum
+        }
     }
 
     pub fn idx_to_vector(&self, idx: i32) -> IVec2 {

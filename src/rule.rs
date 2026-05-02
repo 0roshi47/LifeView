@@ -16,7 +16,7 @@ impl Rule {
             micro: micro,
             sigma: sigma,
             radius: radius,
-            delta: 1.0,
+            delta: 0.1,
         }
     }
 

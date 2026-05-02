@@ -1,4 +1,3 @@
-use bevy::math::ops::exp;
 use bevy::prelude::*;
 
 use crate::cell::Cell;

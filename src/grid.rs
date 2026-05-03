@@ -60,6 +60,7 @@ impl Grid {
     }
 
     pub fn clear(&mut self) {
+        self.paused = true;
         for i in 0..self.cells.len() {
             self.cells[i] = Cell::new(0.0);
         }

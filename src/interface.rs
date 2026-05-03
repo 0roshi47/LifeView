@@ -102,7 +102,7 @@ pub fn ui(
             ui.add(egui::Slider::new(&mut grid.rule.micro, 0.0..=1.0).text("μ micro"));
             ui.add(egui::Slider::new(&mut grid.rule.sigma, 0.0..=1.0).text("σ sigma"));
             ui.add(egui::Slider::new(&mut grid.rule.radius, 1..=15).text("Radius"));
-            ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=1.0).text("Δt"));
+            ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=0.5).text("Δt"));
 
             ui.separator();
 
@@ -137,6 +137,7 @@ pub fn ui(
                 .show(ui, |ui| {
                     for (i, (name, rule)) in shape_names.iter().enumerate() {
                         if ui.button(name).clicked() {
+                            grid.clear();
                             grid.spawn_shape(name.clone(), shapes.0.clone());
                             grid.rule = rule.clone();
                         }

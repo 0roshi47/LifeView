@@ -2,7 +2,7 @@
 
 Lenia continuous cellular automaton simulator built in Rust with the Bevy Engine.
 
-![Random Generation](https://github.com/user-attachments/assets/random-generation.mov)
+https://github.com/user-attachments/videos/random-generation.mov
 
 ## Rule System
 
@@ -31,7 +31,7 @@ Each cell updates: `new_state = clamp(old_state + growth(u) · Δt, 0, 1)`
 
 - **Orbium bicaudatus** — classic 20×20 seed from official Lenia tutorial (R=13, μ=0.15, σ=0.015)
 
-![Orbium](https://github.com/user-attachments/assets/orbium.mov)
+https://github.com/user-attachments/videos/orbium.mov
 
 - **Aquarium** — ring seed with different parameters (R=10, μ=0.278, σ=0.036)
 

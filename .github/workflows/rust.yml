@@ -58,10 +58,10 @@ jobs:
                   wasm-bindgen --out-dir web/wasm --target web \
                     target/wasm32-unknown-unknown/release/LifeView.wasm
 
-            - name: Copy assets and index.html
+            - name: Copy assets
               run: |
+                  rm -rf web/assets
                   cp -r assets web/assets
-                  cp index.html web/index.html
 
             - name: Upload Pages artifact
               uses: actions/upload-pages-artifact@v3

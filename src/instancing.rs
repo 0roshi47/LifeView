@@ -25,8 +25,8 @@ use bevy::{
 use bytemuck::{Pod, Zeroable};
 
 use crate::grid::Grid;
+use crate::grid_coloration::ColorGradient;
 
-const SHADER_ASSET_PATH: &str = "shaders/cell.wgsl";
 const BASE_CELL_WIDTH: usize = 75;
 
 // --- Per-instance data sent to GPU ---
@@ -55,10 +55,24 @@ impl ExtractComponent for CellInstanceData {
 #[derive(Component)]
 pub struct CellGrid;
 
+// --- Component holding current gradient index (extracted to render world) ---
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct GradientIndex(pub usize);
+
+impl ExtractComponent for GradientIndex {
+    type QueryData = &'static GradientIndex;
+    type QueryFilter = ();
+    type Out = Self;
+    fn extract_component(item: QueryItem<'_, '_, Self::QueryData>) -> Option<Self> {
+        Some(GradientIndex(item.0))
+    }
+}
+
 pub struct CellMaterialPlugin;
 impl Plugin for CellMaterialPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractComponentPlugin::<CellInstanceData>::default());
+        app.add_plugins(ExtractComponentPlugin::<GradientIndex>::default());
         app.add_systems(Startup, setup);
         app.add_systems(FixedUpdate, update_instance_data);
 
@@ -108,6 +122,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Quer
         Mesh2d(mesh),
         CellInstanceData(instances),
         CellGrid,
+        GradientIndex(0),
         Transform::default(),
         GlobalTransform::default(),
         Visibility::default(),
@@ -119,6 +134,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Quer
 pub fn update_instance_data(
     grid: Option<Res<Grid>>,
     mut query: Query<&mut CellInstanceData, With<CellGrid>>,
+    mut gradient_query: Query<&mut GradientIndex, With<CellGrid>>,
 ) {
     let Some(grid) = grid else { return };
     let Ok(mut instance_data) = query.single_mut() else {
@@ -126,6 +142,12 @@ pub fn update_instance_data(
     };
     for (i, inst) in instance_data.0.iter_mut().enumerate() {
         inst.state = grid.cells[i].state;
+    }
+    if let Ok(mut gradient_idx) = gradient_query.single_mut() {
+        gradient_idx.0 = ColorGradient::all()
+            .iter()
+            .position(|g| g.name == grid.grid_coloration.gradient.name)
+            .unwrap_or(0);
     }
 }
 
@@ -157,7 +179,7 @@ fn prepare_cell_buffers(
 // --- Pipeline ---
 #[derive(Resource)]
 struct CellPipeline {
-    shader: Handle<Shader>,
+    shaders: Vec<Handle<Shader>>,
     mesh2d_pipeline: Mesh2dPipeline,
 }
 
@@ -166,33 +188,36 @@ fn init_cell_pipeline(
     asset_server: Res<AssetServer>,
     mesh2d_pipeline: Res<Mesh2dPipeline>,
 ) {
+    let shaders = ColorGradient::all()
+        .iter()
+        .map(|g| asset_server.load(format!("shaders/{}.wgsl", g.name.to_lowercase())))
+        .collect();
     commands.insert_resource(CellPipeline {
-        shader: asset_server.load(SHADER_ASSET_PATH),
+        shaders,
         mesh2d_pipeline: mesh2d_pipeline.clone(),
     });
 }
 
 impl SpecializedMeshPipeline for CellPipeline {
-    type Key = Mesh2dPipelineKey;
+    type Key = (Mesh2dPipelineKey, usize);
 
     fn specialize(
         &self,
-        key: Self::Key,
+        (key, gradient_idx): Self::Key,
         layout: &MeshVertexBufferLayoutRef,
     ) -> Result<RenderPipelineDescriptor, SpecializedMeshPipelineError> {
         let mut desc = self.mesh2d_pipeline.specialize(key, layout)?;
-        desc.vertex.shader = self.shader.clone();
+        let shader = self.shaders[gradient_idx].clone();
+        desc.vertex.shader = shader.clone();
         desc.vertex.buffers.push(VertexBufferLayout {
             array_stride: std::mem::size_of::<CellInstance>() as u64,
             step_mode: VertexStepMode::Instance,
             attributes: vec![
-                // @location(3) position + cell_size: vec3<f32>
                 VertexAttribute {
                     format: VertexFormat::Float32x3,
                     offset: 0,
                     shader_location: 3,
                 },
-                // @location(4) state: f32 — offset by 12 bytes (3×f32)
                 VertexAttribute {
                     format: VertexFormat::Float32,
                     offset: 12,
@@ -200,7 +225,7 @@ impl SpecializedMeshPipeline for CellPipeline {
                 },
             ],
         });
-        desc.fragment.as_mut().unwrap().shader = self.shader.clone();
+        desc.fragment.as_mut().unwrap().shader = shader;
         Ok(desc)
     }
 }
@@ -216,8 +241,10 @@ fn queue_cells(
     material_meshes: Query<(Entity, &MainEntity), With<CellInstanceData>>,
     mut transparent_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     views: Query<(&ExtractedView, &Msaa)>,
+    gradient_query: Query<&GradientIndex, With<CellInstanceData>>,
 ) {
     let draw_fn = draw_functions.read().id::<DrawCells>();
+    let gradient_idx = gradient_query.iter().next().map(|g| **g).unwrap_or(0);
     for (view, msaa) in &views {
         let Some(phase) = transparent_phases.get_mut(&view.retained_view_entity) else {
             continue;
@@ -234,7 +261,7 @@ fn queue_cells(
             let key =
                 view_key | Mesh2dPipelineKey::from_primitive_topology(mesh.primitive_topology());
             let pipeline_id = pipelines
-                .specialize(&pipeline_cache, &pipeline, key, &mesh.layout)
+                .specialize(&pipeline_cache, &pipeline, (key, gradient_idx), &mesh.layout)
                 .unwrap();
             phase.add(Transparent2d {
                 entity: (entity, *main_entity),

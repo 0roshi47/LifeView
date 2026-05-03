@@ -5,6 +5,7 @@ use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
 
 use crate::grid::GenerationType;
 use crate::grid::Grid;
+use crate::grid_coloration::{ColorGradient, GridColoration};
 use crate::rule::Rule;
 use crate::shapes::Shapes;
 
@@ -111,11 +112,15 @@ pub fn ui(
             ui.label(egui::RichText::new("Color map").heading());
             ui.add_space(4.0);
 
-            for i in 0..grid.grid_coloration.color_range.len() {
-                ui.horizontal(|ui| {
-                    color_picker(ui, &mut grid.grid_coloration.color_range[i]);
-                    ui.label(format!("Color {}", i + 1));
-                });
+            let gradients = ColorGradient::all();
+            let current_name = grid.grid_coloration.gradient.name;
+            for gradient in &gradients {
+                let selected = gradient.name == current_name;
+                if ui.selectable_label(selected, gradient.name).clicked() {
+                    grid.grid_coloration = GridColoration {
+                        gradient: gradient.clone(),
+                    };
+                }
             }
 
             ui.separator();
@@ -151,17 +156,4 @@ pub fn ui(
     Ok(())
 }
 
-fn color_picker(ui: &mut egui::Ui, color: &mut LinearRgba) {
-    let mut c = [
-        (color.red * 255.0) as u8,
-        (color.green * 255.0) as u8,
-        (color.blue * 255.0) as u8,
-    ];
-    egui::color_picker::color_edit_button_srgb(ui, &mut c);
-    *color = LinearRgba::new(
-        c[0] as f32 / 255.,
-        c[1] as f32 / 255.,
-        c[2] as f32 / 255.,
-        1.0,
-    );
-}
+

@@ -13,10 +13,14 @@ pub struct Grid {
     pub width: usize,
     pub height: usize,
     pub cell_size: f32,
+    pub prev_cell_size: f32,
     pub rule: Rule,
     pub grid_coloration: GridColoration,
     pub paused: bool,
     pub generation_type: GenerationType,
+    pub kernel_weights: Vec<(IVec2, f32)>,
+    pub prev_radius: i32,
+    pub kernel_sum: f32,
 }
 
 impl Grid {
@@ -26,13 +30,42 @@ impl Grid {
             width: width,
             height: height,
             cell_size: cell_size,
+            prev_cell_size: cell_size,
             rule: Rule::default(),
             grid_coloration: GridColoration::default(),
             paused: true,
             generation_type: GenerationType::RANDOM,
+            kernel_weights: Vec::new(),
+            prev_radius: 0,
+            kernel_sum: 0.0,
         };
+        grid.rebuild_kernel();
         grid.init();
         grid
+    }
+
+    pub fn needs_rebuild(&self) -> bool {
+        (self.cell_size - self.prev_cell_size).abs() > f32::EPSILON
+    }
+
+    pub fn rebuild_kernel(&mut self) {
+        self.kernel_weights.clear();
+        self.kernel_sum = 0.0;
+        self.prev_radius = self.rule.radius;
+        let r = self.rule.radius as f32;
+
+        for x in -self.rule.radius..=self.rule.radius {
+            for y in -self.rule.radius..=self.rule.radius {
+                let d = IVec2::new(x, y).as_vec2().length();
+                if d > r || d == 0.0 {
+                    continue;
+                }
+                let t = d / r;
+                let w = (-((t - 0.5) / 0.15).powi(2) / 2.0).exp();
+                self.kernel_weights.push((IVec2::new(x, y), w));
+                self.kernel_sum += w;
+            }
+        }
     }
 
     pub fn init(&mut self) {
@@ -68,28 +101,14 @@ impl Grid {
 
     pub fn life_around(&self, pos: IVec2) -> f32 {
         let mut result: f32 = 0.0;
-        let mut kernel_sum: f32 = 0.0;
-        let r = self.rule.radius as f32;
-
-        for x in -self.rule.radius..=self.rule.radius {
-            for y in -self.rule.radius..=self.rule.radius {
-                let d = (IVec2::new(x, y).as_vec2()).length();
-                if d > r || d == 0.0 {
-                    continue;
-                }
-                let t = d / r; // normalised distance in (0, 1]
-                // Bell curve peaked at t=0.5, width ~0.15 — matches the tutorial's kernel
-                let w = (-((t - 0.5) / 0.15).powi(2) / 2.0).exp();
-                let neighbour_cell = self.wrap_pos(pos + IVec2::new(x, y));
-                result += self.cells[self.vector_to_idx(neighbour_cell) as usize].state * w;
-                kernel_sum += w;
-            }
+        for &(offset, w) in &self.kernel_weights {
+            let neighbour = self.wrap_pos(pos + offset);
+            result += self.cells[self.vector_to_idx(neighbour) as usize].state * w;
         }
-
-        if kernel_sum == 0.0 {
+        if self.kernel_sum == 0.0 {
             0.0
         } else {
-            result / kernel_sum
+            result / self.kernel_sum
         }
     }
 

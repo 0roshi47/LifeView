@@ -103,6 +103,9 @@ pub fn ui(
             ui.add(egui::Slider::new(&mut grid.rule.micro, 0.0..=1.0).text("μ micro"));
             ui.add(egui::Slider::new(&mut grid.rule.sigma, 0.0..=1.0).text("σ sigma"));
             ui.add(egui::Slider::new(&mut grid.rule.radius, 1..=15).text("Radius"));
+            if grid.rule.radius != grid.prev_radius {
+                grid.rebuild_kernel();
+            }
             ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=0.5).text("Δt"));
 
             ui.separator();

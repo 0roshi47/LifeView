@@ -24,6 +24,7 @@ use bevy::{
 };
 use bytemuck::{Pod, Zeroable};
 
+use crate::cell::Cell;
 use crate::grid::Grid;
 use crate::grid_coloration::ColorGradient;
 
@@ -74,6 +75,7 @@ impl Plugin for CellMaterialPlugin {
         app.add_plugins(ExtractComponentPlugin::<CellInstanceData>::default());
         app.add_plugins(ExtractComponentPlugin::<GradientIndex>::default());
         app.add_systems(Startup, setup);
+        app.add_systems(Update, rebuild_grid_instances);
         app.add_systems(FixedUpdate, update_instance_data);
 
         app.sub_app_mut(RenderApp)
@@ -149,6 +151,51 @@ pub fn update_instance_data(
             .position(|g| g.name == grid.grid_coloration.gradient.name)
             .unwrap_or(0);
     }
+}
+
+pub fn rebuild_grid_instances(
+    mut grid: ResMut<Grid>,
+    mut query: Query<(&mut CellInstanceData, &mut GradientIndex), With<CellGrid>>,
+    windows: Query<&Window>,
+) {
+    if !grid.needs_rebuild() {
+        return;
+    }
+    let Ok((mut instance_data, mut gradient_idx)) = query.single_mut() else {
+        return;
+    };
+    let window = windows.single().unwrap();
+    let new_cell_size = grid.cell_size;
+    let width = (window.resolution.width() / new_cell_size) as usize;
+    let height = (window.resolution.height() / new_cell_size) as usize;
+    let width = width.max(1);
+    let height = height.max(1);
+
+    grid.cells = vec![Cell::default(); width * height];
+    grid.width = width;
+    grid.height = height;
+    grid.cell_size = new_cell_size;
+    grid.prev_cell_size = new_cell_size;
+    grid.init();
+
+    let instances: Vec<CellInstance> = (0..grid.cells.len())
+        .map(|i| {
+            let x = (i % grid.width) as f32 * new_cell_size
+                - (grid.width as f32 * new_cell_size) / 2.0
+                + new_cell_size / 2.0;
+            let y = (i / grid.width) as f32 * new_cell_size
+                - (grid.height as f32 * new_cell_size) / 2.0
+                + new_cell_size / 2.0;
+            CellInstance {
+                position: Vec2::new(x, y),
+                cell_size: new_cell_size,
+                state: grid.cells[i].state,
+            }
+        })
+        .collect();
+
+    instance_data.0 = instances;
+    gradient_idx.0 = 0;
 }
 
 // --- GPU buffer ---

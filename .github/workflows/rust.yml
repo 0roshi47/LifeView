@@ -39,15 +39,18 @@ jobs:
             - name: Build for WASM
               run: cargo build --release --target wasm32-unknown-unknown --locked
 
+            - name: Create index.html
+              run: |
+                  mkdir -p web/wasm web/assets
+                  printf '%s\n' '<!doctype html>' '<html lang="en">' '  <head><meta charset="UTF-8"><title>LifeView</title>' '    <style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}canvas#bevy{width:100%;height:100%;display:block}</style>' '  </head>' '  <body><canvas id="bevy"></canvas><script type="module">import init from "./wasm/LifeView.js";await init();</script></body>' '</html>' > web/index.html
+
             - name: Generate JS bindings
               run: |
-                  rm -rf web/wasm/*
                   wasm-bindgen --out-dir web/wasm --target web \
                     target/wasm32-unknown-unknown/release/LifeView.wasm
 
             - name: Copy assets
               run: |
-                  rm -rf web/assets
                   cp -r assets web/assets
 
             - name: Deploy to web branch

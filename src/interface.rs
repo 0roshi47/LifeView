@@ -6,10 +6,10 @@ use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
 use crate::grid::GenerationType;
 use crate::grid::Grid;
 use crate::grid_coloration::{ColorGradient, GridColoration};
-use crate::rule::Rule;
+use crate::rule::{KernelDef, Rule};
 use crate::shapes::Shapes;
 
-pub const PANEL_WIDTH: f32 = 230.;
+pub const PANEL_WIDTH: f32 = 280.;
 pub const TOPBAR_HEIGHT: f32 = 32.;
 
 pub struct UiPlugin;
@@ -67,96 +67,235 @@ pub fn ui(
         .resizable(false)
         .exact_width(PANEL_WIDTH)
         .show(contexts.ctx_mut()?, |ui| {
-            // ── Grid ──────────────────────────────────────────────
-            ui.add_space(8.0);
-            ui.label(egui::RichText::new("Grid").heading());
-            ui.add_space(4.0);
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                // ── Grid ──────────────────────────────────────────
+                ui.add_space(8.0);
+                ui.label(egui::RichText::new("Grid").heading());
+                ui.add_space(4.0);
 
-            ui.add(egui::Slider::new(&mut grid.cell_size, 4.0..=32.0).text("Cell size"));
+                ui.add(egui::Slider::new(&mut grid.cell_size, 4.0..=32.0).text("Cell size"));
 
-            egui::ComboBox::from_label("Topology")
-                .selected_text("Toroidal (loop)")
-                .show_ui(ui, |ui| {
-                    ui.selectable_label(true, "Toroidal (loop)");
-                    ui.selectable_label(false, "Finite");
-                });
+                egui::ComboBox::from_label("Topology")
+                    .selected_text("Toroidal (loop)")
+                    .show_ui(ui, |ui| {
+                        ui.selectable_label(true, "Toroidal (loop)");
+                        ui.selectable_label(false, "Finite");
+                    });
 
-            egui::ComboBox::from_label("Init")
-                .selected_text(format!("{:?}", grid.generation_type))
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut grid.generation_type, GenerationType::EMPTY, "Empty");
-                    ui.selectable_value(
-                        &mut grid.generation_type,
-                        GenerationType::RANDOM,
-                        "Random",
-                    );
-                    ui.selectable_value(&mut grid.generation_type, GenerationType::BLOB, "Blob");
-                });
+                egui::ComboBox::from_label("Init")
+                    .selected_text(format!("{:?}", grid.generation_type))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut grid.generation_type,
+                            GenerationType::EMPTY,
+                            "Empty",
+                        );
+                        ui.selectable_value(
+                            &mut grid.generation_type,
+                            GenerationType::RANDOM,
+                            "Random",
+                        );
+                        ui.selectable_value(
+                            &mut grid.generation_type,
+                            GenerationType::BLOB,
+                            "Blob",
+                        );
+                    });
 
-            ui.separator();
+                ui.separator();
 
-            // ── Rules ─────────────────────────────────────────────
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new("Rules").heading());
-            ui.add_space(4.0);
+                // ── Channels ──────────────────────────────────────
+                ui.add_space(4.0);
+                ui.label(egui::RichText::new("Channels").heading());
+                ui.add_space(4.0);
 
-            ui.add(egui::Slider::new(&mut grid.rule.micro, 0.0..=1.0).text("μ micro"));
-            ui.add(egui::Slider::new(&mut grid.rule.sigma, 0.0..=1.0).text("σ sigma"));
-            ui.add(egui::Slider::new(&mut grid.rule.radius, 1..=15).text("Radius"));
-            if grid.rule.radius != grid.prev_radius {
-                grid.rebuild_kernel();
-            }
-            ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=0.5).text("Δt"));
-
-            ui.separator();
-
-            // ── Color map ─────────────────────────────────────────
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new("Color map").heading());
-            ui.add_space(4.0);
-
-            let gradients = ColorGradient::all();
-            let current_name = grid.grid_coloration.gradient.name;
-            for gradient in &gradients {
-                let selected = gradient.name == current_name;
-                if ui.selectable_label(selected, gradient.name).clicked() {
-                    grid.grid_coloration = GridColoration {
-                        gradient: gradient.clone(),
-                    };
+                let mut num_channels = grid.rule.num_channels as i32;
+                ui.add(egui::Slider::new(&mut num_channels, 1..=3).text("Count"));
+                let num_channels = num_channels as usize;
+                if num_channels != grid.rule.num_channels {
+                    change_channel_count(&mut grid, num_channels);
                 }
-            }
 
-            ui.separator();
+                ui.separator();
 
-            // ── Shapes ────────────────────────────────────────────
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new("Shapes").heading());
-            ui.add_space(4.0);
-
-            let shape_names: Vec<(String, Rule)> = shapes
-                .0
-                .iter()
-                .map(|s| (s.name.clone(), s.optimal_rule.clone()))
-                .collect();
-
-            egui::Grid::new("shapes_grid")
-                .num_columns(2)
-                .spacing([6.0, 6.0])
-                .show(ui, |ui| {
-                    for (i, (name, rule)) in shape_names.iter().enumerate() {
-                        if ui.button(name).clicked() {
-                            grid.clear();
-                            grid.spawn_shape(name.clone(), shapes.0.clone());
-                            grid.rule = rule.clone();
-                        }
-                        if i % 2 == 1 {
-                            ui.end_row();
-                        }
+                // ── Kernels ───────────────────────────────────────
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Kernels").heading());
+                    ui.add_space(8.0);
+                    if ui.button("+ Add").clicked() {
+                        add_default_kernel(&mut grid);
                     }
                 });
+                ui.add_space(4.0);
+
+                let num_kernels = grid.rule.kernels.len();
+                let mut to_remove: Option<usize> = None;
+                let mut kernels_changed = false;
+
+                for ki in 0..num_kernels {
+                    let kernel = &mut grid.rule.kernels[ki];
+                    let header_label = if num_kernels == 1 {
+                        format!("Kernel")
+                    } else {
+                        format!("Kernel #{}", ki + 1)
+                    };
+
+                    egui::CollapsingHeader::new(&header_label)
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            ui.label(format!("c{} → c{}", kernel.c0, kernel.c1));
+
+                            ui.add(
+                                egui::Slider::new(&mut kernel.mu, 0.0..=1.0)
+                                    .text("μ micro"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.sigma, 0.001..=0.2)
+                                    .text("σ sigma"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.base_radius, 1..=20)
+                                    .text("Radius"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.relative_radius, 0.1..=1.5)
+                                    .text("ρ rel. radius"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.height, 0.0..=1.0)
+                                    .text("η height"),
+                            );
+
+                            ui.checkbox(&mut kernel.use_target, "Use target (not growth)");
+
+                            if ui.small_button("Remove").clicked() {
+                                to_remove = Some(ki);
+                            }
+
+                            kernels_changed = true;
+                        });
+                }
+
+                if let Some(ki) = to_remove {
+                    if grid.rule.kernels.len() > 1 {
+                        grid.rule.kernels.remove(ki);
+                        kernels_changed = true;
+                    }
+                }
+
+                if kernels_changed {
+                    grid.rebuild_all_kernels();
+                }
+
+                ui.separator();
+
+                // ── Global Rules ──────────────────────────────────
+                ui.add_space(4.0);
+                ui.label(egui::RichText::new("Global Rules").heading());
+                ui.add_space(4.0);
+
+                ui.add(egui::Slider::new(&mut grid.rule.delta, 0.0..=0.5).text("Δt"));
+
+                ui.separator();
+
+                // ── Color map ─────────────────────────────────────
+                ui.add_space(4.0);
+                ui.label(egui::RichText::new("Color map").heading());
+                ui.add_space(4.0);
+
+                let gradients = ColorGradient::all();
+                let current_name = grid.grid_coloration.gradient.name;
+                for gradient in &gradients {
+                    let selected = gradient.name == current_name;
+                    if ui.selectable_label(selected, gradient.name).clicked() {
+                        grid.grid_coloration = GridColoration {
+                            gradient: gradient.clone(),
+                        };
+                    }
+                }
+
+                ui.separator();
+
+                // ── Shapes ────────────────────────────────────────
+                ui.add_space(4.0);
+                ui.label(egui::RichText::new("Shapes").heading());
+                ui.add_space(4.0);
+
+                let shape_names: Vec<(String, Rule)> = shapes
+                    .0
+                    .iter()
+                    .map(|s| (s.name.clone(), s.optimal_rule.clone()))
+                    .collect();
+
+                egui::Grid::new("shapes_grid")
+                    .num_columns(2)
+                    .spacing([6.0, 6.0])
+                    .show(ui, |ui| {
+                        for (i, (name, _rule)) in shape_names.iter().enumerate() {
+                            if ui.button(name).clicked() {
+                                grid.clear();
+                                grid.spawn_shape(name.clone(), shapes.0.clone());
+                            }
+                            if i % 2 == 1 {
+                                ui.end_row();
+                            }
+                        }
+                    });
+            });
         });
 
     Ok(())
 }
 
+fn change_channel_count(grid: &mut Grid, new_count: usize) {
+    if new_count == grid.rule.num_channels {
+        return;
+    }
 
+    let old_channels = grid.rule.num_channels;
+    grid.rule.num_channels = new_count;
+
+    for cell in &mut grid.cells {
+        let mut new_ch = vec![0.0; new_count];
+        for i in 0..new_count.min(old_channels) {
+            new_ch[i] = cell.channels[i];
+        }
+        cell.channels = new_ch;
+    }
+
+    if new_count == 1 && grid.rule.kernels.len() > 1 {
+        let first = grid.rule.kernels[0].clone();
+        grid.rule.kernels = vec![KernelDef {
+            c0: 0,
+            c1: 0,
+            ..first
+        }];
+    }
+
+    grid.rebuild_all_kernels();
+}
+
+fn add_default_kernel(grid: &mut Grid) {
+    let _num_channels = grid.rule.num_channels;
+    let first_kernel = grid.rule.kernels.first();
+
+    let new_kernel = if let Some(k) = first_kernel {
+        KernelDef {
+            mu: k.mu,
+            sigma: k.sigma,
+            base_radius: k.base_radius,
+            relative_radius: k.relative_radius,
+            height: k.height,
+            peaks: k.peaks.clone(),
+            c0: 0,
+            c1: 0,
+            use_target: false,
+        }
+    } else {
+        KernelDef::default_single(0.15, 0.015, 13)
+    };
+
+    grid.rule.kernels.push(new_kernel);
+    grid.rebuild_all_kernels();
+}

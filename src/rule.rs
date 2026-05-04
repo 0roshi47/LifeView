@@ -3,38 +3,118 @@ use bevy::math::ops::exp;
 #[derive(Clone, Debug)]
 pub struct Rule {
     pub state_type: StateType,
-    pub micro: f32,
-    pub sigma: f32,
-    pub radius: i32,
     pub delta: f32,
+    pub kernels: Vec<KernelDef>,
+    pub num_channels: usize,
 }
 
 impl Rule {
-    pub fn new(state_type: StateType, micro: f32, sigma: f32, radius: i32) -> Self {
+    pub fn single_channel(mu: f32, sigma: f32, radius: i32) -> Self {
         Self {
-            state_type: state_type,
-            micro: micro,
-            sigma: sigma,
-            radius: radius,
+            state_type: StateType::CONTINUOUS,
             delta: 0.1,
+            kernels: vec![KernelDef::default_single(mu, sigma, radius)],
+            num_channels: 1,
         }
     }
 
-    pub fn growth(&self, u: f32) -> f32 {
-        let diff: f32 = u - self.micro;
-        2.0 * exp(-((diff * diff) / (2.0 * self.sigma * self.sigma))) - 1.0
+    pub fn multi_channel(kernels: Vec<KernelDef>, num_channels: usize) -> Self {
+        Self {
+            state_type: StateType::CONTINUOUS,
+            delta: 0.1,
+            kernels,
+            num_channels,
+        }
+    }
+
+    pub fn growth(&self, u: f32, kernel_idx: usize) -> f32 {
+        let k = &self.kernels[kernel_idx];
+        2.0 * exp(-((u - k.mu).powi(2) / (2.0 * k.sigma * k.sigma))) - 1.0
+    }
+
+    pub fn target(&self, u: f32, kernel_idx: usize) -> f32 {
+        let k = &self.kernels[kernel_idx];
+        exp(-((u - k.mu).powi(2) / (2.0 * k.sigma * k.sigma)))
+    }
+
+    pub fn effective_radius(&self, kernel_idx: usize) -> i32 {
+        let k = &self.kernels[kernel_idx];
+        ((k.base_radius as f32) * k.relative_radius).ceil() as i32
+    }
+
+    pub fn max_radius(&self) -> i32 {
+        self.kernels
+            .iter()
+            .map(|k| ((k.base_radius as f32) * k.relative_radius).ceil() as i32)
+            .max()
+            .unwrap_or(13)
+    }
+
+    pub fn default_orbium() -> Self {
+        Self::single_channel(0.15, 0.015, 13)
     }
 }
 
 impl Default for Rule {
     fn default() -> Self {
+        Self::default_orbium()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct KernelDef {
+    pub mu: f32,
+    pub sigma: f32,
+    pub base_radius: i32,
+    pub relative_radius: f32,
+    pub height: f32,
+    pub peaks: Vec<f32>,
+    pub c0: usize,
+    pub c1: usize,
+    pub use_target: bool,
+}
+
+impl KernelDef {
+    pub fn default_single(mu: f32, sigma: f32, radius: i32) -> Self {
         Self {
-            state_type: StateType::CONTINUOUS,
-            micro: 0.15,
-            sigma: 0.015,
-            radius: 13,
-            delta: 0.1,
+            mu,
+            sigma,
+            base_radius: radius,
+            relative_radius: 1.0,
+            height: 1.0,
+            peaks: vec![1.0],
+            c0: 0,
+            c1: 0,
+            use_target: false,
         }
+    }
+
+    pub fn new(
+        mu: f32,
+        sigma: f32,
+        base_radius: i32,
+        relative_radius: f32,
+        height: f32,
+        peaks: Vec<f32>,
+        c0: usize,
+        c1: usize,
+    ) -> Self {
+        Self {
+            mu,
+            sigma,
+            base_radius,
+            relative_radius,
+            height,
+            peaks,
+            c0,
+            c1,
+            use_target: false,
+        }
+    }
+
+    pub fn with_target(mut self, use_target: bool) -> Self {
+        self.use_target = use_target;
+        self
     }
 }
 

@@ -1,20 +1,28 @@
 #[derive(Clone, Debug)]
 pub struct Cell {
-    pub state : f32,
+    pub channels: Vec<f32>,
 }
 
 impl Cell {
-    pub fn new(state: f32) -> Self {
+    pub fn new(num_channels: usize) -> Self {
         Self {
-            state: state
+            channels: vec![0.0; num_channels],
         }
+    }
+
+    pub fn with_state(channels: Vec<f32>) -> Self {
+        Self { channels }
+    }
+
+    pub fn num_channels(&self) -> usize {
+        self.channels.len()
     }
 }
 
-impl Default for Cell {    
+impl Default for Cell {
     fn default() -> Self {
         Self {
-            state: 0.0
+            channels: vec![0.0; 1],
         }
     }
 }

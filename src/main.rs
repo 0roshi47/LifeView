@@ -16,7 +16,7 @@ mod interface;
 mod rule;
 mod shapes;
 
-const DRAW_STRENGHT: f32 = 0.05;
+const DRAW_STRENGTH: f32 = 0.05;
 
 fn main() {
     App::new()
@@ -50,7 +50,9 @@ fn mouse_click(
     windows: Query<&Window>,
     grid: Option<ResMut<grid::Grid>>,
 ) {
-    let Some(grid) = grid else { return };
+    let Some(grid) = grid else {
+        return;
+    };
     let window = windows.single().unwrap();
     if mouse.pressed(MouseButton::Left) {
         if let Some(position) = window.cursor_position() {
@@ -70,6 +72,11 @@ fn draw(position: Vec2, mut grid: ResMut<grid::Grid>, pressure: f32, window: &Wi
     let gy = (world_y / grid.cell_size).floor() as i32;
     let true_pos = grid.wrap_pos(IVec2::new(gx, gy));
     let idx: usize = grid.vector_to_idx(true_pos) as usize;
-    grid.cells[idx].state += DRAW_STRENGHT * pressure * grid.rule.delta;
-    grid.cells[idx].state = grid.cells[idx].state.clamp(0., 1.);
+    let num_channels = grid.rule.num_channels;
+    for c in 0..num_channels {
+        if c < grid.cells[idx].channels.len() {
+            grid.cells[idx].channels[c] += DRAW_STRENGTH * pressure * grid.rule.delta;
+            grid.cells[idx].channels[c] = grid.cells[idx].channels[c].clamp(0.0, 1.0);
+        }
+    }
 }

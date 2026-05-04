@@ -5,12 +5,14 @@ struct Vertex {
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
     @location(3) i_pos_size: vec3<f32>,
-    @location(4) i_state: f32,
+    @location(4) i_rgb: vec3<f32>,
 };
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) state: f32,
+    @location(0) r: f32,
+    @location(1) g: f32,
+    @location(2) b: f32,
 };
 
 @vertex
@@ -25,26 +27,13 @@ fn vertex(v: Vertex) -> VertexOutput {
         get_world_from_local(0u),
         vec4<f32>(world_pos, 1.0)
     );
-    out.state = v.i_state;
+    out.r = v.i_rgb.x;
+    out.g = v.i_rgb.y;
+    out.b = v.i_rgb.z;
     return out;
-}
-
-fn lerp_color(state: f32) -> vec4<f32> {
-    let c0 = vec4<f32>(0.050, 0.030, 0.528, 1.0);
-    let c1 = vec4<f32>(0.369, 0.061, 0.699, 1.0);
-    let c2 = vec4<f32>(0.679, 0.105, 0.575, 1.0);
-    let c3 = vec4<f32>(0.895, 0.188, 0.377, 1.0);
-    let c4 = vec4<f32>(0.990, 0.385, 0.148, 1.0);
-    let c5 = vec4<f32>(0.991, 0.697, 0.195, 1.0);
-    let c6 = vec4<f32>(0.940, 0.975, 0.131, 1.0);
-    let colors = array<vec4<f32>, 7>(c0, c1, c2, c3, c4, c5, c6);
-    let ratio = clamp(state, 0.0, 1.0) * 6.0;
-    let low = u32(floor(ratio));
-    let high = min(low + 1u, 6u);
-    return mix(colors[low], colors[high], ratio - floor(ratio));
 }
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    return lerp_color(in.state);
+    return vec4<f32>(in.r, in.g, in.b, 1.0);
 }

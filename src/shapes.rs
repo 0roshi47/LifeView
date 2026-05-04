@@ -3,7 +3,7 @@ use bevy::{
     math::IVec2,
 };
 
-use crate::rule::{Rule, StateType};
+use crate::rule::Rule;
 
 #[derive(Clone, Debug)]
 pub struct Shape {
@@ -112,7 +112,7 @@ impl Shape {
     /// (OpenLenia/Lenia-Tutorial: Tutorial_From_Conway_to_Lenia).
     /// Parameters: R=13, mu=0.15, sigma=0.015, T=10
     pub fn orbium_bicaudatus(name: impl Into<String>) -> Self {
-        let rule = Rule::new(StateType::CONTINUOUS, 0.15, 0.015, 13);
+        let rule = Rule::single_channel(0.15, 0.015, 13);
         Self::from_grid(name, rule, ORBIUM_GRID)
     }
 }
@@ -280,7 +280,7 @@ pub fn add_shapes(mut shapes: ResMut<Shapes>) {
     // Aquarium — ring seed, different parameters
     let aquarium = Shape::ring(
         "Aquarium",
-        Rule::new(StateType::CONTINUOUS, 0.278, 0.036, 10),
+        Rule::single_channel(0.278, 0.036, 10),
         2,
         7,
         |t| (1.0 - t).powi(2),

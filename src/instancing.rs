@@ -20,7 +20,7 @@ use bevy::{
     sprite_render::{
         Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup,
         SetMesh2dViewBindGroup, init_mesh_2d_pipeline,
-    }, // sprite::{Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup, SetMesh2dViewBindGroup},
+    },
 };
 use bytemuck::{Pod, Zeroable};
 
@@ -30,16 +30,17 @@ use crate::grid_coloration::ColorGradient;
 
 const BASE_CELL_WIDTH: usize = 75;
 
-// --- Per-instance data sent to GPU ---
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct CellInstance {
-    pub position: Vec2, // world position
+    pub position: Vec2,
     pub cell_size: f32,
-    pub state: f32,
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub _pad: f32,
 }
 
-// --- Component holding all instances ---
 #[derive(Component, Deref)]
 pub struct CellInstanceData(pub Vec<CellInstance>);
 
@@ -52,11 +53,9 @@ impl ExtractComponent for CellInstanceData {
     }
 }
 
-// --- Marker component to find the grid entity ---
 #[derive(Component)]
 pub struct CellGrid;
 
-// --- Component holding current gradient index (extracted to render world) ---
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct GradientIndex(pub usize);
 
@@ -109,15 +108,19 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Quer
                 + cell_size / 2.0;
             let y = (i / grid.width) as f32 * cell_size - (grid.height as f32 * cell_size) / 2.0
                 + cell_size / 2.0;
+            let cell = &grid.cells[i];
+            let (r, g, b) = channels_to_rgb(&cell.channels, &grid.grid_coloration.gradient);
             CellInstance {
                 position: Vec2::new(x, y),
                 cell_size,
-                state: grid.cells[i].state,
+                r,
+                g,
+                b,
+                _pad: 0.0,
             }
         })
         .collect();
 
-    // Single quad mesh (unit square, will be scaled per-instance in shader)
     let mesh = meshes.add(Rectangle::new(1.0, 1.0));
 
     commands.spawn((
@@ -133,17 +136,38 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Quer
     commands.insert_resource(grid);
 }
 
+fn channels_to_rgb(channels: &[f32], gradient: &ColorGradient) -> (f32, f32, f32) {
+    if channels.is_empty() {
+        return (0.0, 0.0, 0.0);
+    }
+    if channels.len() >= 3 {
+        return (channels[0], channels[1], channels[2]);
+    }
+    if channels.len() == 2 {
+        let color = gradient.lerp(channels[0]);
+        return (color.red * channels[0], color.green * channels[1], color.blue * 0.5);
+    }
+    let color = gradient.lerp(channels[0]);
+    (color.red, color.green, color.blue)
+}
+
 pub fn update_instance_data(
     grid: Option<Res<Grid>>,
     mut query: Query<&mut CellInstanceData, With<CellGrid>>,
     mut gradient_query: Query<&mut GradientIndex, With<CellGrid>>,
 ) {
-    let Some(grid) = grid else { return };
+    let Some(grid) = grid else {
+        return;
+    };
     let Ok(mut instance_data) = query.single_mut() else {
         return;
     };
     for (i, inst) in instance_data.0.iter_mut().enumerate() {
-        inst.state = grid.cells[i].state;
+        let cell = &grid.cells[i];
+        let (r, g, b) = channels_to_rgb(&cell.channels, &grid.grid_coloration.gradient);
+        inst.r = r;
+        inst.g = g;
+        inst.b = b;
     }
     if let Ok(mut gradient_idx) = gradient_query.single_mut() {
         gradient_idx.0 = ColorGradient::all()
@@ -171,7 +195,8 @@ pub fn rebuild_grid_instances(
     let width = width.max(1);
     let height = height.max(1);
 
-    grid.cells = vec![Cell::default(); width * height];
+    let num_channels = grid.rule.num_channels;
+    grid.cells = vec![Cell::new(num_channels); width * height];
     grid.width = width;
     grid.height = height;
     grid.cell_size = new_cell_size;
@@ -186,10 +211,15 @@ pub fn rebuild_grid_instances(
             let y = (i / grid.width) as f32 * new_cell_size
                 - (grid.height as f32 * new_cell_size) / 2.0
                 + new_cell_size / 2.0;
+            let cell = &grid.cells[i];
+            let (r, g, b) = channels_to_rgb(&cell.channels, &grid.grid_coloration.gradient);
             CellInstance {
                 position: Vec2::new(x, y),
                 cell_size: new_cell_size,
-                state: grid.cells[i].state,
+                r,
+                g,
+                b,
+                _pad: 0.0,
             }
         })
         .collect();
@@ -198,7 +228,6 @@ pub fn rebuild_grid_instances(
     gradient_idx.0 = 0;
 }
 
-// --- GPU buffer ---
 #[derive(Component)]
 pub struct CellInstanceBuffer {
     buffer: Buffer,
@@ -223,7 +252,6 @@ fn prepare_cell_buffers(
     }
 }
 
-// --- Pipeline ---
 #[derive(Resource)]
 struct CellPipeline {
     shaders: Vec<Handle<Shader>>,
@@ -266,7 +294,7 @@ impl SpecializedMeshPipeline for CellPipeline {
                     shader_location: 3,
                 },
                 VertexAttribute {
-                    format: VertexFormat::Float32,
+                    format: VertexFormat::Float32x3,
                     offset: 12,
                     shader_location: 4,
                 },
@@ -277,7 +305,6 @@ impl SpecializedMeshPipeline for CellPipeline {
     }
 }
 
-// --- Queue ---
 fn queue_cells(
     draw_functions: Res<DrawFunctions<Transparent2d>>,
     pipeline: Res<CellPipeline>,
@@ -324,7 +351,6 @@ fn queue_cells(
     }
 }
 
-// --- Draw command ---
 type DrawCells = (
     SetItemPipeline,
     SetMesh2dViewBindGroup<0>,
@@ -346,9 +372,10 @@ impl<P: PhaseItem> RenderCommand<P> for DrawCellsInstanced {
         item: &P,
         _view: (),
         instance_buffer: Option<&'w CellInstanceBuffer>,
-        (meshes, mesh_instances, mesh_allocator): SystemParamItem<'w, '_, Self::Param>,
+        param: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
+        let (meshes, mesh_instances, mesh_allocator) = param;
         let mesh_allocator = mesh_allocator.into_inner();
         let Some(mesh_instance) = mesh_instances.get(&item.main_entity()) else {
             return RenderCommandResult::Skip;

@@ -5,12 +5,14 @@ struct Vertex {
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
     @location(3) i_pos_size: vec3<f32>,
-    @location(4) i_state: f32,
+    @location(4) i_rgb: vec3<f32>,
 };
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) state: f32,
+    @location(0) r: f32,
+    @location(1) g: f32,
+    @location(2) b: f32,
 };
 
 @vertex
@@ -25,7 +27,9 @@ fn vertex(v: Vertex) -> VertexOutput {
         get_world_from_local(0u),
         vec4<f32>(world_pos, 1.0)
     );
-    out.state = v.i_state;
+    out.r = v.i_rgb.x;
+    out.g = v.i_rgb.y;
+    out.b = v.i_rgb.z;
     return out;
 }
 
@@ -46,5 +50,5 @@ fn lerp_color(state: f32) -> vec4<f32> {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    return lerp_color(in.state);
+    return vec4<f32>(in.r, in.g, in.b, 1.0);
 }

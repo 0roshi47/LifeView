@@ -24,9 +24,9 @@ use bevy::{
 };
 use bytemuck::{Pod, Zeroable};
 
-use crate::cell::Cell;
 use crate::grid::Grid;
 use crate::grid_coloration::ColorGradient;
+use crate::interface::{PANEL_WIDTH, TOPBAR_HEIGHT};
 
 const BASE_CELL_WIDTH: usize = 75;
 
@@ -95,21 +95,28 @@ impl Plugin for CellMaterialPlugin {
 }
 
 fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Query<&Window>) {
-    commands.spawn(Camera2d);
-
     let window = windows.single().unwrap();
     let cell_size = window.resolution.width() / BASE_CELL_WIDTH as f32;
-    let grid_height = (BASE_CELL_WIDTH * 9) / 16;
-    let grid = Grid::new(BASE_CELL_WIDTH, grid_height, cell_size);
+    let visible_width = window.resolution.width() - PANEL_WIDTH;
+    let visible_height = window.resolution.height() - TOPBAR_HEIGHT;
+    let grid_width = (visible_width / cell_size) as usize;
+    let grid_height = (visible_height / cell_size) as usize;
+    let grid = Grid::new(grid_width.max(1), grid_height.max(1), cell_size);
 
-    let instances: Vec<CellInstance> = (0..grid.cells.len())
+    commands.spawn((
+        Camera2d,
+        Transform::from_xyz(-PANEL_WIDTH / 2.0, TOPBAR_HEIGHT / 2.0, 0.0),
+    ));
+
+    let num_channels = grid.rule.num_channels;
+
+    let instances: Vec<CellInstance> = (0..grid.width * grid.height)
         .map(|i| {
             let x = (i % grid.width) as f32 * cell_size - (grid.width as f32 * cell_size) / 2.0
                 + cell_size / 2.0;
             let y = (i / grid.width) as f32 * cell_size - (grid.height as f32 * cell_size) / 2.0
                 + cell_size / 2.0;
-            let cell = &grid.cells[i];
-            let (r, g, b) = channels_to_rgb(&cell.channels, &grid.grid_coloration.gradient);
+            let (r, g, b) = channels_to_rgb_flat(&grid.cell_data, i, num_channels, &grid.grid_coloration.gradient);
             CellInstance {
                 position: Vec2::new(x, y),
                 cell_size,
@@ -136,18 +143,19 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Quer
     commands.insert_resource(grid);
 }
 
-fn channels_to_rgb(channels: &[f32], gradient: &ColorGradient) -> (f32, f32, f32) {
-    if channels.is_empty() {
+fn channels_to_rgb_flat(cell_data: &[f32], idx: usize, num_channels: usize, gradient: &ColorGradient) -> (f32, f32, f32) {
+    if num_channels == 0 {
         return (0.0, 0.0, 0.0);
     }
-    if channels.len() >= 3 {
-        return (channels[0], channels[1], channels[2]);
+    let base = idx * num_channels;
+    if num_channels >= 3 {
+        return (cell_data[base], cell_data[base + 1], cell_data[base + 2]);
     }
-    if channels.len() == 2 {
-        let color = gradient.lerp(channels[0]);
-        return (color.red * channels[0], color.green * channels[1], color.blue * 0.5);
+    if num_channels == 2 {
+        let color = gradient.lerp(cell_data[base]);
+        return (color.red * cell_data[base], color.green * cell_data[base + 1], color.blue * 0.5);
     }
-    let color = gradient.lerp(channels[0]);
+    let color = gradient.lerp(cell_data[base]);
     (color.red, color.green, color.blue)
 }
 
@@ -162,9 +170,9 @@ pub fn update_instance_data(
     let Ok(mut instance_data) = query.single_mut() else {
         return;
     };
+    let num_channels = grid.rule.num_channels;
     for (i, inst) in instance_data.0.iter_mut().enumerate() {
-        let cell = &grid.cells[i];
-        let (r, g, b) = channels_to_rgb(&cell.channels, &grid.grid_coloration.gradient);
+        let (r, g, b) = channels_to_rgb_flat(&grid.cell_data, i, num_channels, &grid.grid_coloration.gradient);
         inst.r = r;
         inst.g = g;
         inst.b = b;
@@ -190,29 +198,32 @@ pub fn rebuild_grid_instances(
     };
     let window = windows.single().unwrap();
     let new_cell_size = grid.cell_size;
-    let width = (window.resolution.width() / new_cell_size) as usize;
-    let height = (window.resolution.height() / new_cell_size) as usize;
+    let visible_width = window.resolution.width() - PANEL_WIDTH;
+    let visible_height = window.resolution.height() - TOPBAR_HEIGHT;
+    let width = (visible_width / new_cell_size) as usize;
+    let height = (visible_height / new_cell_size) as usize;
     let width = width.max(1);
     let height = height.max(1);
 
     let num_channels = grid.rule.num_channels;
-    grid.cells = vec![Cell::new(num_channels); width * height];
+    let total_cells = width * height;
+    grid.cell_data = vec![0.0; total_cells * num_channels];
+    grid.next_cell_data = vec![0.0; total_cells * num_channels];
     grid.width = width;
     grid.height = height;
     grid.cell_size = new_cell_size;
     grid.prev_cell_size = new_cell_size;
     grid.init();
 
-    let instances: Vec<CellInstance> = (0..grid.cells.len())
+    let instances: Vec<CellInstance> = (0..total_cells)
         .map(|i| {
-            let x = (i % grid.width) as f32 * new_cell_size
-                - (grid.width as f32 * new_cell_size) / 2.0
+            let x = (i % width) as f32 * new_cell_size
+                - (width as f32 * new_cell_size) / 2.0
                 + new_cell_size / 2.0;
-            let y = (i / grid.width) as f32 * new_cell_size
-                - (grid.height as f32 * new_cell_size) / 2.0
+            let y = (i / width) as f32 * new_cell_size
+                - (height as f32 * new_cell_size) / 2.0
                 + new_cell_size / 2.0;
-            let cell = &grid.cells[i];
-            let (r, g, b) = channels_to_rgb(&cell.channels, &grid.grid_coloration.gradient);
+            let (r, g, b) = channels_to_rgb_flat(&grid.cell_data, i, num_channels, &grid.grid_coloration.gradient);
             CellInstance {
                 position: Vec2::new(x, y),
                 cell_size: new_cell_size,
@@ -239,7 +250,8 @@ fn prepare_cell_buffers(
     query: Query<(Entity, &CellInstanceData)>,
     render_device: Res<RenderDevice>,
 ) {
-    for (entity, data) in &query {
+    let items: Vec<_> = query.iter().collect();
+    for (entity, data) in items {
         let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
             label: Some("cell instance buffer"),
             contents: bytemuck::cast_slice(&data.0),
@@ -319,6 +331,7 @@ fn queue_cells(
 ) {
     let draw_fn = draw_functions.read().id::<DrawCells>();
     let gradient_idx = gradient_query.iter().next().map(|g| **g).unwrap_or(0);
+    let meshes_ref = &*meshes;
     for (view, msaa) in &views {
         let Some(phase) = transparent_phases.get_mut(&view.retained_view_entity) else {
             continue;
@@ -329,7 +342,7 @@ fn queue_cells(
             let Some(mesh_instance) = render_mesh_instances.get(main_entity) else {
                 continue;
             };
-            let Some(mesh) = meshes.get(mesh_instance.mesh_asset_id) else {
+            let Some(mesh) = meshes_ref.get(mesh_instance.mesh_asset_id) else {
                 continue;
             };
             let key =
@@ -380,7 +393,8 @@ impl<P: PhaseItem> RenderCommand<P> for DrawCellsInstanced {
         let Some(mesh_instance) = mesh_instances.get(&item.main_entity()) else {
             return RenderCommandResult::Skip;
         };
-        let Some(gpu_mesh) = meshes.into_inner().get(mesh_instance.mesh_asset_id) else {
+        let meshes_ref = &*meshes;
+        let Some(gpu_mesh) = meshes_ref.get(mesh_instance.mesh_asset_id) else {
             return RenderCommandResult::Skip;
         };
         let Some(inst_buf) = instance_buffer else {

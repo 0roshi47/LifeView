@@ -3,12 +3,11 @@ use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
 use crate::grid::update_generation;
 use crate::instancing::CellMaterialPlugin;
 use crate::instancing::update_instance_data;
-use crate::interface::UiPlugin;
+use crate::interface::{UiPlugin, PANEL_WIDTH, TOPBAR_HEIGHT};
 use crate::shapes::add_shapes;
 use crate::shapes::insert_shapes;
 use bevy_egui::EguiPlugin;
 
-mod cell;
 mod grid;
 mod grid_coloration;
 mod instancing;
@@ -53,7 +52,9 @@ fn mouse_click(
     let Some(grid) = grid else {
         return;
     };
-    let window = windows.single().unwrap();
+    let Ok(window) = windows.single() else {
+        return;
+    };
     if mouse.pressed(MouseButton::Left) {
         if let Some(position) = window.cursor_position() {
             draw(position, grid, 1.0, window);
@@ -66,17 +67,17 @@ fn mouse_click(
 }
 
 fn draw(position: Vec2, mut grid: ResMut<grid::Grid>, pressure: f32, window: &Window) {
-    let world_x = position.x;
-    let world_y = window.height() - position.y;
-    let gx = (world_x / grid.cell_size).floor() as i32;
-    let gy = (world_y / grid.cell_size).floor() as i32;
+    if position.x < PANEL_WIDTH || position.y < TOPBAR_HEIGHT {
+        return;
+    }
+    let gx = ((position.x - PANEL_WIDTH) / grid.cell_size).floor() as i32;
+    let gy = ((window.height() - position.y) / grid.cell_size).floor() as i32;
     let true_pos = grid.wrap_pos(IVec2::new(gx, gy));
     let idx: usize = grid.vector_to_idx(true_pos) as usize;
     let num_channels = grid.rule.num_channels;
     for c in 0..num_channels {
-        if c < grid.cells[idx].channels.len() {
-            grid.cells[idx].channels[c] += DRAW_STRENGTH * pressure * grid.rule.delta;
-            grid.cells[idx].channels[c] = grid.cells[idx].channels[c].clamp(0.0, 1.0);
-        }
+        let cell_idx = idx * num_channels + c;
+        grid.cell_data[cell_idx] += DRAW_STRENGTH * pressure * grid.rule.delta;
+        grid.cell_data[cell_idx] = grid.cell_data[cell_idx].clamp(0.0, 1.0);
     }
 }

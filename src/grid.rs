@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-use crate::cell::Cell;
 use crate::grid_coloration::GridColoration;
 use crate::rule::{KernelDef, Rule};
 use crate::shapes::Shape;
@@ -9,7 +8,8 @@ use rand::Rng;
 
 #[derive(Resource, Debug)]
 pub struct Grid {
-    pub cells: Vec<Cell>,
+    pub cell_data: Vec<f32>,
+    pub next_cell_data: Vec<f32>,
     pub width: usize,
     pub height: usize,
     pub cell_size: f32,
@@ -39,8 +39,11 @@ impl Grid {
     pub fn new(width: usize, height: usize, cell_size: f32) -> Self {
         let rule = Rule::default();
         let num_channels = rule.num_channels;
+        let total_cells = width * height;
+
         let mut grid = Self {
-            cells: vec![Cell::new(num_channels); width * height],
+            cell_data: vec![0.0; total_cells * num_channels],
+            next_cell_data: vec![0.0; total_cells * num_channels],
             width,
             height,
             cell_size,
@@ -92,22 +95,9 @@ impl Grid {
         }
     }
 
-    pub fn rebuild_kernel_for(&mut self, kernel_idx: usize) {
-        if kernel_idx >= self.rule.kernels.len() {
-            return;
-        }
-        let kernel_def = &self.rule.kernels[kernel_idx];
-        let cache = Self::build_kernel(kernel_def);
-        self.kernel_caches[kernel_idx] = cache;
-        self.prev_kernel_sig[kernel_idx] = KernelSignature {
-            base_radius: kernel_def.base_radius,
-            relative_radius: kernel_def.relative_radius,
-            peaks: kernel_def.peaks.clone(),
-        };
-    }
-
     fn build_kernel(kernel_def: &KernelDef) -> KernelCache {
-        let effective_r = ((kernel_def.base_radius as f32) * kernel_def.relative_radius).ceil() as i32;
+        let effective_r =
+            ((kernel_def.base_radius as f32) * kernel_def.relative_radius).ceil() as i32;
         let r = effective_r.max(1);
         let mut weights = Vec::new();
         let mut sum = 0.0;
@@ -145,40 +135,48 @@ impl Grid {
     pub fn init(&mut self) {
         self.paused = true;
         let num_channels = self.rule.num_channels;
+        let total_cells = self.width * self.height;
         let cx = self.width as f32 / 2.0;
         let cy = self.height as f32 / 2.0;
         let r = self.width.min(self.height) as f32 / 6.0;
+
         if self.generation_type == GenerationType::EMPTY {
-            for i in 0..self.cells.len() {
-                self.cells[i] = Cell::new(num_channels);
+            for i in 0..total_cells * num_channels {
+                self.cell_data[i] = 0.0;
             }
             return;
         }
-        for i in 0..self.cells.len() {
+
+        for i in 0..total_cells {
+            let pos = self.idx_to_vector(i as i32);
+
             if self.generation_type == GenerationType::RANDOM {
-                let mut channels = Vec::with_capacity(num_channels);
-                for _ in 0..num_channels {
-                    channels.push(rand::rng().random());
+                for c in 0..num_channels {
+                    self.cell_data[i * num_channels + c] = rand::rng().random();
                 }
-                self.cells[i] = Cell::with_state(channels);
                 continue;
             }
-            let pos = self.idx_to_vector(i as i32);
+
+            // BLOB
             let dx = pos.x as f32 - cx;
             let dy = pos.y as f32 - cy;
             let dist = (dx * dx + dy * dy).sqrt();
             let state = (-0.5 * (dist / (r * 0.5)).powi(2)).exp();
-            let mut channels = vec![0.0; num_channels];
-            channels[0] = state;
-            self.cells[i] = Cell::with_state(channels);
+
+            for c in 0..num_channels {
+                self.cell_data[i * num_channels + c] = if c == 0 { state } else { 0.0 };
+            }
         }
     }
 
     pub fn clear(&mut self) {
         self.paused = true;
         let num_channels = self.rule.num_channels;
-        for i in 0..self.cells.len() {
-            self.cells[i] = Cell::new(num_channels);
+        let total_cells = self.width * self.height;
+        for i in 0..total_cells {
+            for c in 0..num_channels {
+                self.cell_data[i * num_channels + c] = 0.0;
+            }
         }
     }
 
@@ -186,14 +184,15 @@ impl Grid {
         let cache = &self.kernel_caches[kernel_idx];
         let kernel_def = &self.rule.kernels[kernel_idx];
         let source_channel = kernel_def.c0;
+        let num_channels = self.rule.num_channels;
 
         let mut result: f32 = 0.0;
         for &(offset, w) in &cache.weights {
             let neighbour = self.wrap_pos(pos + offset);
-            let cell = &self.cells[self.vector_to_idx(neighbour) as usize];
-            if source_channel < cell.channels.len() {
-                result += cell.channels[source_channel] * w;
-            }
+            let grid_idx = self.vector_to_idx(neighbour) as usize;
+            let cell_idx = grid_idx * num_channels + source_channel;
+            let value = self.cell_data[cell_idx];
+            result += value * w;
         }
 
         if cache.sum == 0.0 {
@@ -218,13 +217,23 @@ impl Grid {
         )
     }
 
-    pub fn generation(&self) -> Vec<Cell> {
+    pub fn generation(&mut self) {
         let num_channels = self.rule.num_channels;
-        let mut result: Vec<Cell> = (0..self.width * self.height)
-            .map(|_| Cell::new(num_channels))
-            .collect();
+        let total_cells = self.width * self.height;
 
-        for idx in 0..self.cells.len() {
+        let expected_size = total_cells * num_channels;
+        if self.next_cell_data.len() != expected_size {
+            self.next_cell_data.resize(expected_size, 0.0);
+        }
+
+        let mut kernel_count_per_channel = vec![0; num_channels];
+        for kernel_def in &self.rule.kernels {
+            if kernel_def.c1 < num_channels {
+                kernel_count_per_channel[kernel_def.c1] += 1;
+            }
+        }
+
+        for idx in 0..total_cells {
             let pos = self.idx_to_vector(idx as i32);
 
             for c in 0..num_channels {
@@ -236,8 +245,9 @@ impl Grid {
                     }
 
                     let u = self.life_around(pos, ki, c);
+                    let current_val = self.cell_data[idx * num_channels + c];
                     let g = if kernel_def.use_target {
-                        self.rule.target(u, ki) - self.cells[idx].channels[c]
+                        self.rule.target(u, ki) - current_val
                     } else {
                         self.rule.growth(u, ki)
                     };
@@ -245,14 +255,15 @@ impl Grid {
                     total_growth += kernel_def.height * g;
                 }
 
-                let count_c1 = self.rule.kernels.iter().filter(|k| k.c1 == c).count().max(1);
+                let count_c1 = kernel_count_per_channel[c].max(1);
                 let avg_growth = total_growth / count_c1 as f32;
-                let new_value = self.cells[idx].channels[c] + avg_growth * self.rule.delta;
-                result[idx].channels[c] = new_value.clamp(0.0, 1.0);
+                let current_val = self.cell_data[idx * num_channels + c];
+                let new_value = current_val + avg_growth * self.rule.delta;
+                self.next_cell_data[idx * num_channels + c] = new_value.clamp(0.0, 1.0);
             }
         }
 
-        result
+        std::mem::swap(&mut self.cell_data, &mut self.next_cell_data);
     }
 
     pub fn pause(&mut self) {
@@ -273,25 +284,31 @@ impl Grid {
         }
 
         let num_channels = self.rule.num_channels;
-        for i in 0..self.cells.len() {
-            if self.cells[i].channels.len() != num_channels {
-                self.cells[i] = Cell::new(num_channels);
-            }
+        let total_cells = self.width * self.height;
+
+        let expected_size = total_cells * num_channels;
+        if self.cell_data.len() != expected_size {
+            self.cell_data.resize(expected_size, 0.0);
+            self.next_cell_data.resize(expected_size, 0.0);
+        }
+
+        for i in 0..expected_size {
+            self.cell_data[i] = 0.0;
         }
 
         let grid_center: IVec2 = IVec2::new(self.width as i32 / 2, self.height as i32 / 2);
         for i in 0..shape.cells_state.len() {
             let idx: usize = self.vector_to_idx(grid_center + shape.cells_pos[i]) as usize;
-            if idx < self.cells.len() {
-                if num_channels == 1 {
-                    self.cells[idx].channels[0] = shape.cells_state[i];
-                } else if shape.cells_state.len() == self.cells.len() * num_channels {
-                    let ch = i % num_channels;
-                    if ch < self.cells[idx].channels.len() {
-                        self.cells[idx].channels[ch] = shape.cells_state[i];
-                    }
+            if idx < total_cells {
+                let ch = if !shape.cells_channel.is_empty() {
+                    shape.cells_channel[i]
+                } else if num_channels == 1 {
+                    0
                 } else {
-                    self.cells[idx].channels[0] = shape.cells_state[i];
+                    i % num_channels
+                };
+                if ch < num_channels {
+                    self.cell_data[idx * num_channels + ch] = shape.cells_state[i];
                 }
             }
         }
@@ -308,8 +325,7 @@ pub fn update_generation(grid: Option<ResMut<Grid>>) {
     if grid.kernels_need_rebuild() {
         grid.rebuild_all_kernels();
     }
-    let new_generation = grid.generation();
-    grid.cells = new_generation;
+    grid.generation();
 }
 
 #[cfg(test)]

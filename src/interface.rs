@@ -254,15 +254,22 @@ fn change_channel_count(grid: &mut Grid, new_count: usize) {
     }
 
     let old_channels = grid.rule.num_channels;
-    grid.rule.num_channels = new_count;
+    let total_cells = grid.width * grid.height;
 
-    for cell in &mut grid.cells {
-        let mut new_ch = vec![0.0; new_count];
-        for i in 0..new_count.min(old_channels) {
-            new_ch[i] = cell.channels[i];
+    let mut new_data = vec![0.0; total_cells * new_count];
+
+    for i in 0..total_cells {
+        let old_base = i * old_channels;
+        let new_base = i * new_count;
+        let copy_len = new_count.min(old_channels);
+        for c in 0..copy_len {
+            new_data[new_base + c] = grid.cell_data[old_base + c];
         }
-        cell.channels = new_ch;
     }
+
+    grid.cell_data = new_data;
+    grid.next_cell_data = vec![0.0; total_cells * new_count];
+    grid.rule.num_channels = new_count;
 
     if new_count == 1 && grid.rule.kernels.len() > 1 {
         let first = grid.rule.kernels[0].clone();

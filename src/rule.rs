@@ -29,7 +29,13 @@ impl Rule {
 
     pub fn growth(&self, u: f32, kernel_idx: usize) -> f32 {
         let k = &self.kernels[kernel_idx];
-        2.0 * exp(-((u - k.mu).powi(2) / (2.0 * k.sigma * k.sigma))) - 1.0
+        if k.polynomial {
+            let alpha = 0.0_f32.max(1.0 - ((u - k.mu).powi(2) / (9.0 * k.sigma * k.sigma)));
+            let power = k.peaks.len() as f32;
+            2.0 * alpha.powf(power) - 1.0
+        } else {
+            2.0 * exp(-((u - k.mu).powi(2) / (2.0 * k.sigma * k.sigma))) - 1.0
+        }
     }
 
     pub fn target(&self, u: f32, kernel_idx: usize) -> f32 {
@@ -72,6 +78,8 @@ pub struct KernelDef {
     pub c0: usize,
     pub c1: usize,
     pub use_target: bool,
+    pub sum_mode: bool,
+    pub polynomial: bool,
 }
 
 impl KernelDef {
@@ -86,6 +94,8 @@ impl KernelDef {
             c0: 0,
             c1: 0,
             use_target: false,
+            sum_mode: false,
+            polynomial: false,
         }
     }
 
@@ -98,6 +108,8 @@ impl KernelDef {
         peaks: Vec<f32>,
         c0: usize,
         c1: usize,
+        sum_mode: bool,
+        polynomial: bool,
     ) -> Self {
         Self {
             mu,
@@ -109,6 +121,8 @@ impl KernelDef {
             c0,
             c1,
             use_target: false,
+            sum_mode,
+            polynomial,
         }
     }
 

@@ -131,24 +131,9 @@ impl Shape {
     /// Parameters: R=10, T=5, 3 kernels averaging growth
     pub fn fish(name: impl Into<String>) -> Self {
         let kernels = vec![
-            // Kernel 0: b=[1, 5/12, 2/3], mu=0.156, sigma=0.0118
-            {
-                let mut k = KernelDef::default_single(0.156, 0.0118, 10);
-                k.peaks = vec![1.0, 5.0 / 12.0, 2.0 / 3.0];
-                k
-            },
-            // Kernel 1: b=[1/12, 1], mu=0.193, sigma=0.049
-            {
-                let mut k = KernelDef::default_single(0.193, 0.049, 10);
-                k.peaks = vec![1.0 / 12.0, 1.0];
-                k
-            },
-            // Kernel 2: b=[1], mu=0.342, sigma=0.0891
-            {
-                let mut k = KernelDef::default_single(0.342, 0.0891, 10);
-                k.peaks = vec![1.0];
-                k
-            },
+            KernelDef::new(0.156, 0.0118, 10, 1.0, 1.0, vec![1.0, 5.0 / 12.0, 2.0 / 3.0], 0, 0, true, true),
+            KernelDef::new(0.193, 0.049, 10, 1.0, 1.0, vec![1.0 / 12.0, 1.0], 0, 0, true, true),
+            KernelDef::new(0.342, 0.0891, 10, 1.0, 1.0, vec![1.0], 0, 0, true, false),
         ];
         let mut rule = Rule::multi_channel(kernels, 1);
         rule.delta = 0.2; // T=5 => dt = 1/T = 0.2
@@ -159,30 +144,21 @@ impl Shape {
     /// Parameters: R=12, T=2 (dt=0.5)
     pub fn tessellatium_gyrans(name: impl Into<String>) -> Self {
         let kernels = vec![
-            // Channel 0 -> Channel 0 (kernels 0-2)
-            KernelDef::new(0.272, 0.0595, 12, 0.91, 0.138, vec![1.0], 0, 0),
-            KernelDef::new(0.349, 0.1585, 12, 0.62, 0.48, vec![1.0], 0, 0),
-            KernelDef::new(0.2, 0.0332, 12, 0.5, 0.284, vec![1.0, 0.25], 0, 0),
-            // Channel 1 -> Channel 1 (kernels 3-5)
-            KernelDef::new(0.114, 0.0528, 12, 0.97, 0.256, vec![0.0, 1.0], 1, 1),
-            KernelDef::new(0.447, 0.0777, 12, 0.72, 0.5, vec![1.0], 1, 1),
-            KernelDef::new(0.247, 0.0342, 12, 0.8, 0.622, vec![5.0 / 6.0, 1.0], 1, 1),
-            // Channel 2 -> Channel 2 (kernels 6-8)
-            KernelDef::new(0.21, 0.0617, 12, 0.96, 0.35, vec![1.0], 2, 2),
-            KernelDef::new(0.462, 0.1192, 12, 0.56, 0.218, vec![1.0], 2, 2),
-            KernelDef::new(0.446, 0.1793, 12, 0.78, 0.556, vec![1.0], 2, 2),
-            // Cross-channel: 0->1 (kernel 9)
-            KernelDef::new(0.327, 0.1408, 12, 0.79, 0.344, vec![11.0 / 12.0, 1.0], 0, 1),
-            // Cross-channel: 0->2 (kernel 10)
-            KernelDef::new(0.476, 0.0995, 12, 0.5, 0.456, vec![0.75, 1.0], 0, 2),
-            // Cross-channel: 1->0 (kernel 11)
-            KernelDef::new(0.379, 0.0697, 12, 0.72, 0.67, vec![11.0 / 12.0, 1.0], 1, 0),
-            // Cross-channel: 1->2 (kernel 12)
-            KernelDef::new(0.262, 0.0877, 12, 0.68, 0.42, vec![1.0], 1, 2),
-            // Cross-channel: 2->0 (kernel 13)
-            KernelDef::new(0.412, 0.1101, 12, 0.82, 0.43, vec![1.0 / 6.0, 1.0, 0.0], 2, 0),
-            // Cross-channel: 2->1 (kernel 14)
-            KernelDef::new(0.201, 0.0786, 12, 0.82, 0.278, vec![1.0], 2, 1),
+            KernelDef::new(0.272, 0.0595, 12, 0.91, 0.138, vec![1.0], 0, 0, false, false),
+            KernelDef::new(0.349, 0.1585, 12, 0.62, 0.48, vec![1.0], 0, 0, false, false),
+            KernelDef::new(0.2, 0.0332, 12, 0.5, 0.284, vec![1.0, 0.25], 0, 0, false, true),
+            KernelDef::new(0.114, 0.0528, 12, 0.97, 0.256, vec![0.0, 1.0], 1, 1, false, true),
+            KernelDef::new(0.447, 0.0777, 12, 0.72, 0.5, vec![1.0], 1, 1, false, false),
+            KernelDef::new(0.247, 0.0342, 12, 0.8, 0.622, vec![5.0 / 6.0, 1.0], 1, 1, false, true),
+            KernelDef::new(0.21, 0.0617, 12, 0.96, 0.35, vec![1.0], 2, 2, false, false),
+            KernelDef::new(0.462, 0.1192, 12, 0.56, 0.218, vec![1.0], 2, 2, false, false),
+            KernelDef::new(0.446, 0.1793, 12, 0.78, 0.556, vec![1.0], 2, 2, false, false),
+            KernelDef::new(0.327, 0.1408, 12, 0.79, 0.344, vec![11.0 / 12.0, 1.0], 0, 1, false, true),
+            KernelDef::new(0.476, 0.0995, 12, 0.5, 0.456, vec![0.75, 1.0], 0, 2, false, true),
+            KernelDef::new(0.379, 0.0697, 12, 0.72, 0.67, vec![11.0 / 12.0, 1.0], 1, 0, false, true),
+            KernelDef::new(0.262, 0.0877, 12, 0.68, 0.42, vec![1.0], 1, 2, false, false),
+            KernelDef::new(0.412, 0.1101, 12, 0.82, 0.43, vec![1.0 / 6.0, 1.0, 0.0], 2, 0, false, true),
+            KernelDef::new(0.201, 0.0786, 12, 0.82, 0.278, vec![1.0], 2, 1, false, false),
         ];
         let mut rule = Rule::multi_channel(kernels, 3);
         rule.delta = 0.5; // T=2 => dt = 1/T = 0.5

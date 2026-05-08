@@ -168,6 +168,8 @@ pub fn ui(
                             );
 
                             ui.checkbox(&mut kernel.use_target, "Use target (not growth)");
+                            ui.checkbox(&mut kernel.sum_mode, "Sum mode (height multiply)");
+                            ui.checkbox(&mut kernel.polynomial, "Polynomial growth");
 
                             if ui.small_button("Remove").clicked() {
                                 to_remove = Some(ki);
@@ -271,13 +273,10 @@ fn change_channel_count(grid: &mut Grid, new_count: usize) {
     grid.next_cell_data = vec![0.0; total_cells * new_count];
     grid.rule.num_channels = new_count;
 
-    if new_count == 1 && grid.rule.kernels.len() > 1 {
-        let first = grid.rule.kernels[0].clone();
-        grid.rule.kernels = vec![KernelDef {
-            c0: 0,
-            c1: 0,
-            ..first
-        }];
+    // Clamp all kernel channel indices to valid range
+    for k in &mut grid.rule.kernels {
+        k.c0 = k.c0.min(new_count - 1);
+        k.c1 = k.c1.min(new_count - 1);
     }
 
     grid.rebuild_all_kernels();
@@ -298,6 +297,8 @@ fn add_default_kernel(grid: &mut Grid) {
             c0: 0,
             c1: 0,
             use_target: false,
+            sum_mode: k.sum_mode,
+            polynomial: k.polynomial,
         }
     } else {
         KernelDef::default_single(0.15, 0.015, 13)

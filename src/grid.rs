@@ -5,6 +5,7 @@ use crate::rule::{KernelDef, Rule};
 use crate::shapes::Shape;
 
 use rand::Rng;
+use rayon::prelude::*;
 
 #[derive(Resource, Debug)]
 pub struct Grid {
@@ -202,6 +203,37 @@ impl Grid {
         }
     }
 
+    fn convolve_cell(
+        pos: IVec2,
+        kernel_idx: usize,
+        width: usize,
+        height: usize,
+        num_channels: usize,
+        kernel_caches: &[KernelCache],
+        kernels: &[KernelDef],
+        cell_data: &[f32],
+    ) -> f32 {
+        let cache = &kernel_caches[kernel_idx];
+        let kernel_def = &kernels[kernel_idx];
+        let source_channel = kernel_def.c0;
+
+        let gw = width as i32;
+        let gh = height as i32;
+        let px = pos.x;
+        let py = pos.y;
+
+        let mut result = 0.0;
+        for &(offset, weight) in &cache.weights {
+            let nx = px + offset.x;
+            let ny = py + offset.y;
+            let nx = nx - (nx >= gw) as i32 * gw + (nx < 0) as i32 * gw;
+            let ny = ny - (ny >= gh) as i32 * gh + (ny < 0) as i32 * gh;
+            result += cell_data[(nx + ny * gw) as usize * num_channels + source_channel] * weight;
+        }
+
+        if cache.sum == 0.0 { 0.0 } else { result / cache.sum }
+    }
+
     pub fn idx_to_vector(&self, idx: i32) -> IVec2 {
         IVec2::new(idx % self.width as i32, idx / self.width as i32)
     }
@@ -211,9 +243,11 @@ impl Grid {
     }
 
     pub fn wrap_pos(&self, pos: IVec2) -> IVec2 {
+        let w = self.width as i32;
+        let h = self.height as i32;
         IVec2::new(
-            (pos.x + self.width as i32) % self.width as i32,
-            (pos.y + self.height as i32) % self.height as i32,
+            ((pos.x % w) + w) % w,
+            ((pos.y % h) + h) % h,
         )
     }
 
@@ -222,46 +256,73 @@ impl Grid {
         let total_cells = self.width * self.height;
 
         let expected_size = total_cells * num_channels;
+        if self.cell_data.len() != expected_size {
+            self.cell_data.resize(expected_size, 0.0);
+        }
         if self.next_cell_data.len() != expected_size {
             self.next_cell_data.resize(expected_size, 0.0);
         }
 
-        let mut kernel_count_per_channel = vec![0; num_channels];
-        for kernel_def in &self.rule.kernels {
-            if kernel_def.c1 < num_channels {
-                kernel_count_per_channel[kernel_def.c1] += 1;
+let mut kernel_count_per_channel = vec![0; num_channels];
+            for kernel_def in &self.rule.kernels {
+                if kernel_def.c1 < num_channels {
+                    kernel_count_per_channel[kernel_def.c1] += 1;
+                }
             }
-        }
 
-        for idx in 0..total_cells {
-            let pos = self.idx_to_vector(idx as i32);
+        let cell_data = &self.cell_data;
+        let rule = &self.rule;
+        let kernel_caches = &self.kernel_caches;
+        let width = self.width;
+        let height = self.height;
+        let count_per_ch = &kernel_count_per_channel;
 
-            for c in 0..num_channels {
-                let mut total_growth = 0.0;
+        self.next_cell_data
+            .par_chunks_mut(num_channels)
+            .enumerate()
+            .for_each(|(idx, chunk)| {
+                let pos = IVec2::new(idx as i32 % width as i32, idx as i32 / width as i32);
+                for c in 0..num_channels {
+                    let count_c1 = count_per_ch[c].max(1);
 
-                for (ki, kernel_def) in self.rule.kernels.iter().enumerate() {
-                    if kernel_def.c1 != c {
-                        continue;
+                    let mut multiply_total = 0.0;
+                    let mut sum_total = 0.0;
+                    let mut sum_count = 0;
+
+                    for (ki, kernel_def) in rule.kernels.iter().enumerate() {
+                        if kernel_def.c1 != c {
+                            continue;
+                        }
+
+                        let u = Self::convolve_cell(
+                            pos, ki, width, height, num_channels,
+                            kernel_caches, &rule.kernels, cell_data,
+                        );
+                        let current_val = cell_data[idx * num_channels + c];
+                        let g = if kernel_def.use_target {
+                            rule.target(u, ki) - current_val
+                        } else {
+                            rule.growth(u, ki)
+                        };
+
+                        if kernel_def.sum_mode {
+                            sum_total += kernel_def.height * g;
+                            sum_count += 1;
+                        } else {
+                            multiply_total += kernel_def.height * g;
+                        }
                     }
 
-                    let u = self.life_around(pos, ki, c);
-                    let current_val = self.cell_data[idx * num_channels + c];
-                    let g = if kernel_def.use_target {
-                        self.rule.target(u, ki) - current_val
+                    let avg_growth = if sum_count > 0 {
+                        sum_total / sum_count as f32
                     } else {
-                        self.rule.growth(u, ki)
+                        multiply_total / count_c1 as f32
                     };
-
-                    total_growth += kernel_def.height * g;
+                    let current_val = cell_data[idx * num_channels + c];
+                    let new_value = current_val + avg_growth * rule.delta;
+                    chunk[c] = new_value.clamp(0.0, 1.0);
                 }
-
-                let count_c1 = kernel_count_per_channel[c].max(1);
-                let avg_growth = total_growth / count_c1 as f32;
-                let current_val = self.cell_data[idx * num_channels + c];
-                let new_value = current_val + avg_growth * self.rule.delta;
-                self.next_cell_data[idx * num_channels + c] = new_value.clamp(0.0, 1.0);
-            }
-        }
+            });
 
         std::mem::swap(&mut self.cell_data, &mut self.next_cell_data);
     }

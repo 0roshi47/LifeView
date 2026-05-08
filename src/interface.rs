@@ -118,80 +118,6 @@ pub fn ui(
 
                 ui.separator();
 
-                // ── Kernels ───────────────────────────────────────
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Kernels").heading());
-                    ui.add_space(8.0);
-                    if ui.button("+ Add").clicked() {
-                        add_default_kernel(&mut grid);
-                    }
-                });
-                ui.add_space(4.0);
-
-                let num_kernels = grid.rule.kernels.len();
-                let mut to_remove: Option<usize> = None;
-                let mut kernels_changed = false;
-
-                for ki in 0..num_kernels {
-                    let kernel = &mut grid.rule.kernels[ki];
-                    let header_label = if num_kernels == 1 {
-                        format!("Kernel")
-                    } else {
-                        format!("Kernel #{}", ki + 1)
-                    };
-
-                    egui::CollapsingHeader::new(&header_label)
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            ui.label(format!("c{} → c{}", kernel.c0, kernel.c1));
-
-                            ui.add(
-                                egui::Slider::new(&mut kernel.mu, 0.0..=1.0)
-                                    .text("μ micro"),
-                            );
-                            ui.add(
-                                egui::Slider::new(&mut kernel.sigma, 0.001..=0.2)
-                                    .text("σ sigma"),
-                            );
-                            ui.add(
-                                egui::Slider::new(&mut kernel.base_radius, 1..=20)
-                                    .text("Radius"),
-                            );
-                            ui.add(
-                                egui::Slider::new(&mut kernel.relative_radius, 0.1..=1.5)
-                                    .text("ρ rel. radius"),
-                            );
-                            ui.add(
-                                egui::Slider::new(&mut kernel.height, 0.0..=1.0)
-                                    .text("η height"),
-                            );
-
-                            ui.checkbox(&mut kernel.use_target, "Use target (not growth)");
-                            ui.checkbox(&mut kernel.sum_mode, "Sum mode (height multiply)");
-                            ui.checkbox(&mut kernel.polynomial, "Polynomial growth");
-
-                            if ui.small_button("Remove").clicked() {
-                                to_remove = Some(ki);
-                            }
-
-                            kernels_changed = true;
-                        });
-                }
-
-                if let Some(ki) = to_remove {
-                    if grid.rule.kernels.len() > 1 {
-                        grid.rule.kernels.remove(ki);
-                        kernels_changed = true;
-                    }
-                }
-
-                if kernels_changed {
-                    grid.rebuild_all_kernels();
-                }
-
-                ui.separator();
-
                 // ── Global Rules ──────────────────────────────────
                 ui.add_space(4.0);
                 ui.label(egui::RichText::new("Global Rules").heading());
@@ -244,6 +170,80 @@ pub fn ui(
                             }
                         }
                     });
+
+                ui.separator();
+
+                // ── Kernels ───────────────────────────────────────
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Kernels").heading());
+                    ui.add_space(8.0);
+                    if ui.button("+ Add").clicked() {
+                        add_default_kernel(&mut grid);
+                    }
+                });
+                ui.add_space(4.0);
+
+                let num_kernels = grid.rule.kernels.len();
+                let mut to_remove: Option<usize> = None;
+                let mut kernels_changed = false;
+
+                for ki in 0..num_kernels {
+                    let kernel = &mut grid.rule.kernels[ki];
+                    let header_label = if num_kernels == 1 {
+                        format!("Kernel")
+                    } else {
+                        format!("Kernel #{}", ki + 1)
+                    };
+
+                    egui::CollapsingHeader::new(&header_label)
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            ui.label(format!("c{} → c{}", kernel.c0, kernel.c1));
+
+                            ui.add(
+                                egui::Slider::new(&mut kernel.mu, 0.0..=1.0)
+                                    .text("μ micro"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.sigma, 0.001..=0.2)
+                                    .text("σ sigma"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.base_radius, 1..=20)
+                                    .text("Radius"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.relative_radius, 0.1..=1.5)
+                                    .text("ρ rel. radius"),
+                            );
+                            ui.add(
+                                egui::Slider::new(&mut kernel.height, 0.0..=1.0)
+                                    .text("η height"),
+                            );
+
+                            ui.checkbox(&mut kernel.use_target, "Use target (not growth)");
+                            ui.checkbox(&mut kernel.sum_mode, "Sum mode (height multiply)");
+                            ui.checkbox(&mut kernel.polynomial, "Polynomial growth");
+
+                            if ui.small_button("Remove").clicked() {
+                                to_remove = Some(ki);
+                            }
+
+                            kernels_changed = true;
+                        });
+                }
+
+                if let Some(ki) = to_remove {
+                    if grid.rule.kernels.len() > 1 {
+                        grid.rule.kernels.remove(ki);
+                        kernels_changed = true;
+                    }
+                }
+
+                if kernels_changed {
+                    grid.rebuild_all_kernels();
+                }
             });
         });
 

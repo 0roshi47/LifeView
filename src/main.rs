@@ -1,4 +1,5 @@
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
+use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 use crate::grid::update_generation;
 use crate::instancing::CellMaterialPlugin;
@@ -19,6 +20,7 @@ const DRAW_STRENGTH: f32 = 0.05;
 
 fn main() {
     App::new()
+        .add_plugins(EmbeddedAssetPlugin::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 fit_canvas_to_parent: true,

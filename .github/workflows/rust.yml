@@ -53,10 +53,31 @@ jobs:
               run: |
                   cp -r assets web/assets
 
-            - name: Deploy to web branch
-              uses: peaceiris/actions-gh-pages@v4
+            - name: Create deployment
+              uses: actions/github-script@v7
               with:
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
-                  publish_dir: web
-                  destination_dir: .
-                  publish_branch: web
+                result-encoding: string
+                script: |
+                  const response = await github.rest.repos.createDeployment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: context.payload.ref || context.sha,
+                    environment: 'production',
+                    auto_merge: false,
+                    required_contexts: [],
+                    production_environment: true
+                  });
+                  return response.data.id;
+              id: create-deployment
+
+            - name: Set deployment status to success
+              uses: actions/github-script@v7
+              with:
+                script: |
+                  github.rest.repos.createDeploymentStatus({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    deployment_id: ${{ steps.create-deployment.outputs.result }},
+                    state: 'success',
+                    log_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+                  })

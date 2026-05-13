@@ -299,6 +299,7 @@ fn add_default_kernel(grid: &mut Grid) {
             use_target: false,
             sum_mode: k.sum_mode,
             polynomial: k.polynomial,
+            alpha: k.alpha,
         }
     } else {
         KernelDef::default_single(0.15, 0.015, 13)

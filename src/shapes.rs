@@ -133,7 +133,7 @@ impl Shape {
         let kernels = vec![
             KernelDef::new(0.156, 0.0118, 10, 1.0, 1.0, vec![1.0, 5.0 / 12.0, 2.0 / 3.0], 0, 0, true, true),
             KernelDef::new(0.193, 0.049, 10, 1.0, 1.0, vec![1.0 / 12.0, 1.0], 0, 0, true, true),
-            KernelDef::new(0.342, 0.0891, 10, 1.0, 1.0, vec![1.0], 0, 0, true, false),
+            KernelDef::new(0.342, 0.0891, 10, 1.0, 1.0, vec![1.0], 0, 0, true, false).with_alpha(4.0),
         ];
         let mut rule = Rule::multi_channel(kernels, 1);
         rule.delta = 0.2; // T=5 => dt = 1/T = 0.2

@@ -30,9 +30,14 @@ impl Rule {
     pub fn growth(&self, u: f32, kernel_idx: usize) -> f32 {
         let k = &self.kernels[kernel_idx];
         if k.polynomial {
-            let alpha = 0.0_f32.max(1.0 - ((u - k.mu).powi(2) / (9.0 * k.sigma * k.sigma)));
-            let power = k.peaks.len() as f32;
-            2.0 * alpha.powf(power) - 1.0
+            let l = (u - k.mu).abs();
+            let k_val = 3.0 * k.sigma;
+            if l <= k_val {
+                let ratio = l / k_val;
+                2.0 * (1.0 - ratio * ratio).powf(k.alpha) - 1.0
+            } else {
+                -1.0
+            }
         } else {
             2.0 * exp(-((u - k.mu).powi(2) / (2.0 * k.sigma * k.sigma))) - 1.0
         }
@@ -80,10 +85,11 @@ pub struct KernelDef {
     pub use_target: bool,
     pub sum_mode: bool,
     pub polynomial: bool,
+    pub alpha: f32,
 }
 
 impl KernelDef {
-    pub fn default_single(mu: f32, sigma: f32, radius: i32) -> Self {
+pub fn default_single(mu: f32, sigma: f32, radius: i32) -> Self {
         Self {
             mu,
             sigma,
@@ -96,6 +102,7 @@ impl KernelDef {
             use_target: false,
             sum_mode: false,
             polynomial: false,
+            alpha: 4.0,
         }
     }
 
@@ -123,8 +130,14 @@ impl KernelDef {
             use_target: false,
             sum_mode,
             polynomial,
+            alpha: 4.0,
         }
     }
+
+    pub fn with_alpha(mut self, alpha: f32) -> Self {
+        self.alpha = alpha;
+        self
+}
 
     pub fn with_target(mut self, use_target: bool) -> Self {
         self.use_target = use_target;

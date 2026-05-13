@@ -207,13 +207,28 @@ pub fn rebuild_grid_instances(
 
     let num_channels = grid.rule.num_channels;
     let total_cells = width * height;
-    grid.cell_data = vec![0.0; total_cells * num_channels];
-    grid.next_cell_data = vec![0.0; total_cells * num_channels];
+    let old_width = grid.width;
+    let old_height = grid.height;
+    let old_cell_data = std::mem::take(&mut grid.cell_data);
+    grid.cell_data.resize(total_cells * num_channels, 0.0);
+    grid.next_cell_data.resize(total_cells * num_channels, 0.0);
+    if !old_cell_data.is_empty() {
+        for y in 0..old_height.min(height) {
+            for x in 0..old_width.min(width) {
+                let old_idx = (y * old_width + x) * num_channels;
+                let new_idx = (y * width + x) * num_channels;
+                for c in 0..num_channels {
+                    if old_idx + c < old_cell_data.len() {
+                        grid.cell_data[new_idx + c] = old_cell_data[old_idx + c];
+                    }
+                }
+            }
+        }
+    }
     grid.width = width;
     grid.height = height;
     grid.cell_size = new_cell_size;
     grid.prev_cell_size = new_cell_size;
-    grid.init();
 
     let instances: Vec<CellInstance> = (0..total_cells)
         .map(|i| {

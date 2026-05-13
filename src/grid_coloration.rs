@@ -97,7 +97,7 @@ pub struct GridColoration {
 impl Default for GridColoration {
     fn default() -> Self {
         Self {
-            gradient: ColorGradient::viridis(),
+            gradient: ColorGradient::inferno(),
         }
     }
 }

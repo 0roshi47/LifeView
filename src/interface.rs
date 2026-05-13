@@ -222,7 +222,7 @@ pub fn ui(
                                     .text("η height"),
                             );
 
-                            ui.checkbox(&mut kernel.use_target, "Use target (not growth)");
+                            ui.checkbox(&mut kernel.use_target, "Asymptotic (target mode)");
                             ui.checkbox(&mut kernel.sum_mode, "Sum mode (height multiply)");
                             ui.checkbox(&mut kernel.polynomial, "Polynomial growth");
 

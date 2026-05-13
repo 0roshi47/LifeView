@@ -96,12 +96,12 @@ impl Plugin for CellMaterialPlugin {
 
 fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Query<&Window>) {
     let window = windows.single().unwrap();
-    let cell_size = window.resolution.width() / BASE_CELL_WIDTH as f32;
+    let base_cell_size = 12.0;
     let visible_width = window.resolution.width() - PANEL_WIDTH;
     let visible_height = window.resolution.height() - TOPBAR_HEIGHT;
-    let grid_width = (visible_width / cell_size) as usize;
-    let grid_height = (visible_height / cell_size) as usize;
-    let grid = Grid::new(grid_width.max(1), grid_height.max(1), cell_size);
+    let grid_width = (visible_width / base_cell_size) as usize;
+    let grid_height = (visible_height / base_cell_size) as usize;
+    let grid = Grid::new(grid_width.max(1), grid_height.max(1), base_cell_size);
 
     commands.spawn((
         Camera2d,
@@ -112,14 +112,14 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, windows: Quer
 
     let instances: Vec<CellInstance> = (0..grid.width * grid.height)
         .map(|i| {
-            let x = (i % grid.width) as f32 * cell_size - (grid.width as f32 * cell_size) / 2.0
-                + cell_size / 2.0;
-            let y = (i / grid.width) as f32 * cell_size - (grid.height as f32 * cell_size) / 2.0
-                + cell_size / 2.0;
+            let x = (i % grid.width) as f32 * base_cell_size - (grid.width as f32 * base_cell_size) / 2.0
+                + base_cell_size / 2.0;
+            let y = (i / grid.width) as f32 * base_cell_size - (grid.height as f32 * base_cell_size) / 2.0
+                + base_cell_size / 2.0;
             let (r, g, b) = channels_to_rgb_flat(&grid.cell_data, i, num_channels, &grid.grid_coloration.gradient);
             CellInstance {
                 position: Vec2::new(x, y),
-                cell_size,
+                cell_size: base_cell_size,
                 r,
                 g,
                 b,

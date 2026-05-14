@@ -2,7 +2,7 @@
 
 Lenia — continuous cellular automaton simulator built in Rust with the Bevy Engine.
 
-[videos/random-generation.mov](videos/random-generation.mov)
+<video src="videos/random-generation.mp4" controls width="100%"></video>
 
 ## Rule System
 
@@ -63,7 +63,7 @@ Each kernel defines an independent convolution neighborhood with its own μ, σ,
 
 **Orbium bicaudatus**
 
-[videos/orbium.mov](videos/orbium.mov)
+<video src="videos/orbium.mp4" controls width="100%"></video>
 
 **Hydrogeminium natans** — large radial seed with multi-peak kernel, produces slowly-rotating blobs.
 
@@ -90,7 +90,7 @@ LifeView includes four scientific color maps applied to cell states:
 
 Switch between them in the Display panel. The **Smooth cells** toggle enables a CPU bicubic-interpolated heatmap for a fluid, smoke-like display.
 
-[videos/colormaps.mov](videos/colormaps.mov)
+<video src="videos/colormaps.mp4" controls width="100%"></video>
 
 ### Single-channel display
 

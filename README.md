@@ -2,7 +2,7 @@
 
 Lenia — continuous cellular automaton simulator built in Rust with the Bevy Engine.
 
-<video src="videos/random-generation.mp4" controls width="100%"></video>
+https://github.com/user-attachments/assets/4a6f93d5-8991-4f1e-9418-d074499480fd
 
 ## Rule System
 
@@ -10,7 +10,10 @@ LifeView uses a continuous growth function to evolve cell states each generation
 
 - **μ (micro)** — growth peak. Neighborhood value at which growth is maximal. Default: `0.15`
 - **σ (sigma)** — growth width. Controls how narrowly the growth curve peaks around μ. Default: `0.015`
-- **radius** — neighborhood radius (in cells). Larger = more cells influence each update. Default: `13`
+- **radius** — neighborh
+
+
+ood radius (in cells). Larger = more cells influence each update. Default: `13`
 - **Δt (delta)** — time step per generation. Controls simulation speed. Default: `0.1`
 
 ### Growth function
@@ -63,7 +66,7 @@ Each kernel defines an independent convolution neighborhood with its own μ, σ,
 
 **Orbium bicaudatus**
 
-<video src="videos/orbium.mp4" controls width="100%"></video>
+https://github.com/user-attachments/assets/dee028fd-c5e1-452d-8ee8-b15d627760ef
 
 **Hydrogeminium natans** — large radial seed with multi-peak kernel, produces slowly-rotating blobs.
 
@@ -90,7 +93,7 @@ LifeView includes four scientific color maps applied to cell states:
 
 Switch between them in the Display panel. The **Smooth cells** toggle enables a CPU bicubic-interpolated heatmap for a fluid, smoke-like display.
 
-<video src="videos/colormaps.mp4" controls width="100%"></video>
+https://github.com/user-attachments/assets/7242a62c-6f84-496f-bae3-04f689526060
 
 ### Single-channel display
 

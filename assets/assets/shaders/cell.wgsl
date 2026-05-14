@@ -6,6 +6,7 @@ struct Vertex {
     @location(2) uv: vec2<f32>,
     @location(3) i_pos_size: vec3<f32>,
     @location(4) i_rgb: vec3<f32>,
+    @location(5) i_smooth: f32,
 };
 
 struct VertexOutput {
@@ -13,6 +14,8 @@ struct VertexOutput {
     @location(0) r: f32,
     @location(1) g: f32,
     @location(2) b: f32,
+    @location(3) smoothness: f32,
+    @location(4) uv: vec2<f32>,
 };
 
 @vertex
@@ -30,6 +33,8 @@ fn vertex(v: Vertex) -> VertexOutput {
     out.r = v.i_rgb.x;
     out.g = v.i_rgb.y;
     out.b = v.i_rgb.z;
+    out.smoothness = v.i_smooth;
+    out.uv = v.uv;
     return out;
 }
 

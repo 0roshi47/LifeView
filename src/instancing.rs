@@ -190,58 +190,64 @@ pub fn rebuild_grid_instances(
     mut query: Query<(&mut CellInstanceData, &mut GradientIndex), With<CellGrid>>,
     windows: Query<&Window>,
 ) {
-    if !grid.needs_rebuild() {
+    let window = windows.single().unwrap();
+    let visible_width = window.resolution.width() - PANEL_WIDTH;
+    let visible_height = window.resolution.height() - TOPBAR_HEIGHT;
+
+    let width = ((visible_width / grid.cell_size).ceil() as usize).max(1);
+    let height = ((visible_height / grid.cell_size).ceil() as usize).max(1);
+
+    let slider_changed = grid.needs_rebuild();
+    if !slider_changed && grid.width == width && grid.height == height {
         return;
     }
     let Ok((mut instance_data, mut gradient_idx)) = query.single_mut() else {
         return;
     };
-    let window = windows.single().unwrap();
-    let new_cell_size = grid.cell_size;
-    let visible_width = window.resolution.width() - PANEL_WIDTH;
-    let visible_height = window.resolution.height() - TOPBAR_HEIGHT;
-    let width = (visible_width / new_cell_size) as usize;
-    let height = (visible_height / new_cell_size) as usize;
-    let width = width.max(1);
-    let height = height.max(1);
 
     let num_channels = grid.rule.num_channels;
     let total_cells = width * height;
     let old_width = grid.width;
     let old_height = grid.height;
-    let old_cell_data = std::mem::take(&mut grid.cell_data);
-    grid.cell_data.resize(total_cells * num_channels, 0.0);
-    grid.next_cell_data.resize(total_cells * num_channels, 0.0);
-    if !old_cell_data.is_empty() {
-        for y in 0..old_height.min(height) {
-            for x in 0..old_width.min(width) {
-                let old_idx = (y * old_width + x) * num_channels;
-                let new_idx = (y * width + x) * num_channels;
-                for c in 0..num_channels {
-                    if old_idx + c < old_cell_data.len() {
-                        grid.cell_data[new_idx + c] = old_cell_data[old_idx + c];
+    grid.width = width;
+    grid.height = height;
+    grid.prev_cell_size = grid.cell_size;
+
+    if slider_changed {
+        let old_cell_data = std::mem::take(&mut grid.cell_data);
+        grid.cell_data.resize(total_cells * num_channels, 0.0);
+        grid.next_cell_data.resize(total_cells * num_channels, 0.0);
+        if !old_cell_data.is_empty() {
+            for y in 0..old_height.min(height) {
+                for x in 0..old_width.min(width) {
+                    let old_idx = (y * old_width + x) * num_channels;
+                    let new_idx = (y * width + x) * num_channels;
+                    for c in 0..num_channels {
+                        if old_idx + c < old_cell_data.len() {
+                            grid.cell_data[new_idx + c] = old_cell_data[old_idx + c];
+                        }
                     }
                 }
             }
         }
+    } else {
+        grid.cell_data.resize(total_cells * num_channels, 0.0);
+        grid.next_cell_data.resize(total_cells * num_channels, 0.0);
+        grid.init();
     }
-    grid.width = width;
-    grid.height = height;
-    grid.cell_size = new_cell_size;
-    grid.prev_cell_size = new_cell_size;
 
     let instances: Vec<CellInstance> = (0..total_cells)
         .map(|i| {
-            let x = (i % width) as f32 * new_cell_size
-                - (width as f32 * new_cell_size) / 2.0
-                + new_cell_size / 2.0;
-            let y = (i / width) as f32 * new_cell_size
-                - (height as f32 * new_cell_size) / 2.0
-                + new_cell_size / 2.0;
+            let x = (i % width) as f32 * grid.cell_size
+                - (width as f32 * grid.cell_size) / 2.0
+                + grid.cell_size / 2.0;
+            let y = (i / width) as f32 * grid.cell_size
+                - (height as f32 * grid.cell_size) / 2.0
+                + grid.cell_size / 2.0;
             let (r, g, b) = channels_to_rgb_flat(&grid.cell_data, i, num_channels, &grid.grid_coloration.gradient);
             CellInstance {
                 position: Vec2::new(x, y),
-                cell_size: new_cell_size,
+                cell_size: grid.cell_size,
                 r,
                 g,
                 b,

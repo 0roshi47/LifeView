@@ -92,12 +92,14 @@ impl ColorGradient {
 #[derive(Clone, Debug)]
 pub struct GridColoration {
     pub gradient: ColorGradient,
+    pub smooth: bool,
 }
 
 impl Default for GridColoration {
     fn default() -> Self {
         Self {
             gradient: ColorGradient::inferno(),
+            smooth: false,
         }
     }
 }

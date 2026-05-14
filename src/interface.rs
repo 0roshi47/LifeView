@@ -5,7 +5,7 @@ use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
 
 use crate::grid::GenerationType;
 use crate::grid::Grid;
-use crate::grid_coloration::{ColorGradient, GridColoration};
+use crate::grid_coloration::ColorGradient;
 use crate::rule::{KernelDef, Rule};
 use crate::shapes::Shapes;
 
@@ -127,19 +127,20 @@ pub fn ui(
 
                 ui.separator();
 
-                // ── Color map ─────────────────────────────────────
+                // ── Display ────────────────────────────────────────
                 ui.add_space(4.0);
-                ui.label(egui::RichText::new("Color map").heading());
+                ui.label(egui::RichText::new("Display").heading());
                 ui.add_space(4.0);
 
+                ui.checkbox(&mut grid.grid_coloration.smooth, "Smooth cells");
+
+                ui.label("Color map");
                 let gradients = ColorGradient::all();
                 let current_name = grid.grid_coloration.gradient.name;
                 for gradient in &gradients {
                     let selected = gradient.name == current_name;
                     if ui.selectable_label(selected, gradient.name).clicked() {
-                        grid.grid_coloration = GridColoration {
-                            gradient: gradient.clone(),
-                        };
+                        grid.grid_coloration.gradient = gradient.clone();
                     }
                 }
 
